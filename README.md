@@ -8,11 +8,12 @@ install
 setup environment variable in settings for flutter, npm and pub
 
 run "flutter doctor" to check prerequisites
-run "flutter pub get" download packages
-install flutterfire "dart pub global activate flutterfire_cli"
-run "flutterfire configure"
 
-A new Flutter project.
+run "flutter pub get" download packages
+
+install flutterfire "dart pub global activate flutterfire_cli"
+
+run "flutterfire configure"
 
 ## Getting Started
 
