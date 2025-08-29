@@ -99,7 +99,7 @@ class _LoginState extends State<Login> {
           ),
         ),
       ),
-      bottomNavigationBar: const Nav(),
+      //bottomNavigationBar: const Nav(),
     );
   }
 }

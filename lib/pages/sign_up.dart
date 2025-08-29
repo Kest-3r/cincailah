@@ -101,7 +101,7 @@ class _SignUpState extends State<SignUp> {
           ),
         ),
       ),
-      bottomNavigationBar: const Nav(), // ✅ Keep the nav bar
+      //bottomNavigationBar: const Nav(), // ✅ Keep the nav bar
     );
   }
 }
