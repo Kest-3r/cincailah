@@ -85,4 +85,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'codenection-cincailah-53ce0.firebasestorage.app',
     measurementId: 'G-BEE94SC802',
   );
+
 }
