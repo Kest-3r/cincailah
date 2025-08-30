@@ -6,24 +6,26 @@ import '../pages/sign_up.dart';
 import '../pages/login.dart';
 import '../pages/welcome.dart';
 
-
 class Home extends StatelessWidget {
   const Home({super.key});
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFBFD9FB), // ✅ same background as Diary
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.start,
           children: [
-            SizedBox(height: 100), // spacing from top
+            const SizedBox(height: 100), // spacing from top
             ProfileHeader(
-              name: "John Doe",
-              email: "john.doe@email.com",
-              imagePath: "images/Profile.png",
+              iconPath: "images/Sun.png", // 🌞 give me your icon path
+              line1: "Good Morning",
+              line2: "Let’s make today great!",
             ),
-            SizedBox(height: 120), // spacing below header
+
+            const SizedBox(height: 80), // spacing below header
+            /*
             CustomButton(
               iconPath: "",
               title: "DEBUG",
@@ -35,7 +37,8 @@ class Home extends StatelessWidget {
                 );
               },
             ),
-            SizedBox(height: 20),
+            */
+            const SizedBox(height: 20),
             CustomButton(
               iconPath: "images/Calender.png",
               title: "Deadlines",
@@ -47,7 +50,7 @@ class Home extends StatelessWidget {
                 );
               },
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             CustomButton(
               iconPath: "images/Tree.png",
               title: "Treehole",
@@ -68,16 +71,17 @@ class Home extends StatelessWidget {
   }
 }
 
+
 class ProfileHeader extends StatelessWidget {
-  final String name;
-  final String email;
-  final String imagePath;
+  final String iconPath;
+  final String line1;
+  final String line2;
 
   const ProfileHeader({
     super.key,
-    required this.name,
-    required this.email,
-    required this.imagePath,
+    required this.iconPath,
+    required this.line1,
+    required this.line2,
   });
 
   @override
@@ -85,25 +89,33 @@ class ProfileHeader extends StatelessWidget {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        CircleAvatar(
-          radius: 35,
-          backgroundImage: AssetImage(imagePath),
+        // 🌞 Sun (or any icon you pass in via iconPath)
+        Image.asset(
+          iconPath,
+          width: 120,
+          height: 120,
         ),
         const SizedBox(width: 16),
+
+        // Two lines of text
         Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(name,
-                style: const TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                )),
+            Text(
+              line1,
+              style: const TextStyle(
+                fontSize: 26,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
             const SizedBox(height: 4),
-            Text(email,
-                style: const TextStyle(
-                  fontSize: 14,
-                  color: Colors.black54,
-                )),
+            Text(
+              line2,
+              style: const TextStyle(
+                fontSize: 18,
+                color: Colors.black54,
+              ),
+            ),
           ],
         ),
       ],

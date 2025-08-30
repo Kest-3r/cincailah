@@ -8,7 +8,7 @@ class Welcome extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFFDE8E8), // Faint pink background
+      backgroundColor: const Color(0xFFBFD9FB), // Faint pink background
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -43,7 +43,6 @@ class Welcome extends StatelessWidget {
                   Expanded(
                     child: ElevatedButton(
                       onPressed: () {
-                        // Using Navigator.push to navigate to LoginPage
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const Login()),
@@ -56,32 +55,44 @@ class Welcome extends StatelessWidget {
                           borderRadius: BorderRadius.circular(30.0),
                         ),
                       ),
-                      child: const Text('Login', style: TextStyle(fontSize: 18)),
+                      child: const Text(
+                        'Login',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900, // ✅ bold
+                          color: Colors.white,         // ✅ white
+                        ),
+                      ),
                     ),
                   ),
                   const SizedBox(width: 20),
                   Expanded(
                     child: OutlinedButton(
                       onPressed: () {
-                        // Using Navigator.push to navigate to SignUpPage
                         Navigator.push(
                           context,
                           MaterialPageRoute(builder: (context) => const SignUp()),
                         );
                       },
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF8BB7D7),
-                        side: const BorderSide(color: Color(0xFF8BB7D7)),
-                        backgroundColor: const Color(0xFFE3F2FD), // Very light blue background
+                        foregroundColor: const Color(0xFF8BB7D7), // ✅ text & border color
+                        side: const BorderSide(color: Color(0xFF8BB7D7)), // ✅ blue border
+                        backgroundColor: Colors.white, // ✅ white button background
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
                         ),
                       ),
-                      child: const Text('Sign Up', style: TextStyle(fontSize: 18)),
+                      child: const Text(
+                        'Sign Up',
+                        style: TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w900, // ✅ extra bold (bolder than bold)
+                          color: Color(0xFF8BB7D7),    // ✅ blue text
+                        ),
+                      ),
                     ),
-                  ),
-                ],
+                  ),                ],
               ),
             ),
             const Spacer(flex: 1),

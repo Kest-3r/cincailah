@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../widgets/nav.dart';
 import 'home.dart';
 
 class SignUp extends StatefulWidget {
@@ -54,54 +53,112 @@ class _SignUpState extends State<SignUp> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Sign Up")),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Email input
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(labelText: "Email"),
-                  validator: (value) =>
-                  value == null || value.isEmpty ? "Enter email" : null,
-                ),
-                const SizedBox(height: 16),
+      backgroundColor: const Color(0xFFBFD9FB), // ✅ same as Login
+      appBar: AppBar(
+        title: const Text("Sign Up"),
+        backgroundColor: const Color(0xFF8BB7D7),
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 200),
 
-                // Password input
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(labelText: "Password"),
-                  obscureText: true,
-                  validator: (value) =>
-                  value == null || value.length < 6
-                      ? "Min 6 characters"
-                      : null,
-                ),
-                const SizedBox(height: 24),
-
-                if (_error != null)
-                  Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
+              // Email field
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: "Email",
+                  labelStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
                   ),
-
-                _loading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                  onPressed: _signUp,
-                  child: const Text("Sign Up"),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 16,
+                  ),
                 ),
-              ],
-            ),
+                validator: (value) =>
+                value == null || value.isEmpty ? "Enter email" : null,
+              ),
+
+              const SizedBox(height: 20),
+
+              // Password field
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(
+                  labelText: "Password",
+                  labelStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10,
+                    horizontal: 16,
+                  ),
+                ),
+                obscureText: true,
+                validator: (value) =>
+                value == null || value.length < 6
+                    ? "Min 6 characters"
+                    : null,
+              ),
+
+              const SizedBox(height: 40),
+
+              if (_error != null)
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+
+              _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Center(
+                child: SizedBox(
+                  width: 120, // ✅ narrower button
+                  child: ElevatedButton(
+                    onPressed: _signUp,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8BB7D7),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                      ),
+                    ),
+                    child: const Text(
+                      "Sign Up",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      bottomNavigationBar: const Nav(), // ✅ Keep the nav bar
     );
   }
 }

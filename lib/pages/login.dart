@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import '../widgets/nav.dart';
 import 'home.dart';
 
 class Login extends StatefulWidget {
@@ -33,7 +32,6 @@ class _LoginState extends State<Login> {
         password: _passwordController.text.trim(),
       );
 
-      // ✅ Navigate to Home after successful login
       if (mounted) {
         Navigator.pushReplacement(
           context,
@@ -54,52 +52,109 @@ class _LoginState extends State<Login> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Login")),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Email input
-                TextFormField(
-                  controller: _emailController,
-                  decoration: const InputDecoration(labelText: "Email"),
-                  validator: (value) =>
-                  value == null || value.isEmpty ? "Enter email" : null,
-                ),
-                const SizedBox(height: 16),
+      backgroundColor: const Color(0xFFBFD9FB), // ✅ same as Welcome
+      appBar: AppBar(
+        title: const Text("Login"),
+        backgroundColor: const Color(0xFF8BB7D7), // ✅ faint blue
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const SizedBox(height: 200), // ✅ pushes fields UP (adjust value)
 
-                // Password input
-                TextFormField(
-                  controller: _passwordController,
-                  decoration: const InputDecoration(labelText: "Password"),
-                  obscureText: true,
-                  validator: (value) =>
-                  value == null || value.isEmpty ? "Enter password" : null,
-                ),
-                const SizedBox(height: 24),
-
-                if (_error != null)
-                  Text(
-                    _error!,
-                    style: const TextStyle(color: Colors.red),
+              // Email field
+              TextFormField(
+                controller: _emailController,
+                decoration: InputDecoration(
+                  labelText: "Email",
+                  labelStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
                   ),
-
-                _loading
-                    ? const CircularProgressIndicator()
-                    : ElevatedButton(
-                  onPressed: _login,
-                  child: const Text("Login"),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10, // 👈 taller height
+                    horizontal: 16,
+                  ),
                 ),
-              ],
-            ),
+                validator: (value) =>
+                value == null || value.isEmpty ? "Enter email" : null,
+              ),
+
+              const SizedBox(height: 20),
+
+              // Password field
+              TextFormField(
+                controller: _passwordController,
+                decoration: InputDecoration(
+                  labelText: "Password",
+                  labelStyle: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w900,
+                    color: Colors.black,
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(20.0),
+                    borderSide: BorderSide.none,
+                  ),
+                  contentPadding: const EdgeInsets.symmetric(
+                    vertical: 10, // 👈 taller height
+                    horizontal: 16,
+                  ),
+                ),
+                obscureText: true,
+                validator: (value) =>
+                value == null || value.isEmpty ? "Enter password" : null,
+              ),
+              const SizedBox(height: 40),
+
+              if (_error != null)
+                Text(
+                  _error!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+
+              _loading
+                  ? const Center(child: CircularProgressIndicator())
+                  : Center( // 👈 wrap in Center
+                child: SizedBox(
+                  width: 100, // 👈 set button width here
+                  child: ElevatedButton(
+                    onPressed: _login,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF8BB7D7),
+                      padding: const EdgeInsets.symmetric(vertical: 16), // 👈 only vertical
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(30.0),
+                      ),
+                    ),
+                    child: const Text(
+                      "Login",
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w900,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ),
       ),
-      bottomNavigationBar: const Nav(),
     );
   }
 }

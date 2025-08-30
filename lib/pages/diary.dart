@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../widgets/nav.dart';
 
-// 5 档心情
+//
 enum Mood { veryHappy, calm, neutral, sad, verySad }
 
 const _moodEmoji = {
