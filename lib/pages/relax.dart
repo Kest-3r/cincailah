@@ -414,6 +414,7 @@ class _SquareCard extends StatelessWidget {
   }
 }
 
+//card for music meditation (with sound animation)
 class _SquareMeditationCard extends StatefulWidget {
   final String iconPath;
   final String title;
