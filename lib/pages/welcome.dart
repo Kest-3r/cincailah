@@ -26,7 +26,7 @@ class Welcome extends StatelessWidget {
             const SizedBox(height: 50),
             // The image illustration
             // Replace with your actual image asset
-            Container(
+            SizedBox(
               height: 600,
               width: 600,
               // For a local asset image:
@@ -45,11 +45,15 @@ class Welcome extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const Login()),
+                          MaterialPageRoute(
+                            builder: (context) => const Login(),
+                          ),
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF8BB7D7), // Faint blue button
+                        backgroundColor: const Color(
+                          0xFF8BB7D7,
+                        ), // Faint blue button
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
@@ -60,7 +64,7 @@ class Welcome extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 20,
                           fontWeight: FontWeight.w900, // ✅ bold
-                          color: Colors.white,         // ✅ white
+                          color: Colors.white, // ✅ white
                         ),
                       ),
                     ),
@@ -71,13 +75,20 @@ class Welcome extends StatelessWidget {
                       onPressed: () {
                         Navigator.push(
                           context,
-                          MaterialPageRoute(builder: (context) => const SignUp()),
+                          MaterialPageRoute(
+                            builder: (context) => const SignUp(),
+                          ),
                         );
                       },
                       style: OutlinedButton.styleFrom(
-                        foregroundColor: const Color(0xFF8BB7D7), // ✅ text & border color
-                        side: const BorderSide(color: Color(0xFF8BB7D7)), // ✅ blue border
-                        backgroundColor: Colors.white, // ✅ white button background
+                        foregroundColor: const Color(
+                          0xFF8BB7D7,
+                        ), // ✅ text & border color
+                        side: const BorderSide(
+                          color: Color(0xFF8BB7D7),
+                        ), // ✅ blue border
+                        backgroundColor:
+                            Colors.white, // ✅ white button background
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(30.0),
@@ -87,12 +98,14 @@ class Welcome extends StatelessWidget {
                         'Sign Up',
                         style: TextStyle(
                           fontSize: 20,
-                          fontWeight: FontWeight.w900, // ✅ extra bold (bolder than bold)
-                          color: Color(0xFF8BB7D7),    // ✅ blue text
+                          fontWeight: FontWeight
+                              .w900, // ✅ extra bold (bolder than bold)
+                          color: Color(0xFF8BB7D7), // ✅ blue text
                         ),
                       ),
                     ),
-                  ),                ],
+                  ),
+                ],
               ),
             ),
             const Spacer(flex: 1),
@@ -102,4 +115,3 @@ class Welcome extends StatelessWidget {
     );
   }
 }
-

@@ -42,14 +42,15 @@ class _DiaryState extends State<Diary> {
     setState(() => _saving = true);
     await _col.add({
       'text': text,
-      'mood': _selected.name,               // 👈 保存心情
-      'ts': FieldValue.serverTimestamp(),   // 服务器时间
+      'mood': _selected.name, // 👈 保存心情
+      'ts': FieldValue.serverTimestamp(), // 服务器时间
     });
     _ctrl.clear();
     setState(() => _saving = false);
     if (mounted) {
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Saved to Firebase')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Saved to Firebase')));
     }
   }
 
@@ -96,13 +97,16 @@ class _DiaryState extends State<Diary> {
                   borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 10,
+                  horizontal: 14,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: Mood.values.map((m) {
@@ -114,9 +118,13 @@ class _DiaryState extends State<Diary> {
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           shape: BoxShape.circle,
-                          color: selected ? const Color(0xFFEFF6FF) : Colors.transparent,
+                          color: selected
+                              ? const Color(0xFFEFF6FF)
+                              : Colors.transparent,
                           border: Border.all(
-                            color: selected ? const Color(0xFF3B82F6) : Colors.transparent,
+                            color: selected
+                                ? const Color(0xFF3B82F6)
+                                : Colors.transparent,
                             width: 2,
                           ),
                         ),
@@ -138,13 +146,16 @@ class _DiaryState extends State<Diary> {
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
+                      color: Colors.black.withValues(alpha: 0.06),
                       blurRadius: 10,
                       offset: const Offset(0, 4),
                     ),
                   ],
                 ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 12,
+                ),
                 child: TextField(
                   controller: _ctrl,
                   maxLines: 6,
@@ -163,7 +174,10 @@ class _DiaryState extends State<Diary> {
                   onPressed: _saving ? null : _save,
                   child: _saving
                       ? const SizedBox(
-                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
+                          width: 18,
+                          height: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
                       : const Text("Save today's mood"),
                 ),
               ),
@@ -201,8 +215,14 @@ class MoodHistoryPage extends StatelessWidget {
         title: const Text('Clear all records?'),
         content: const Text('This deletes all moods for this user.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Clear')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Clear'),
+          ),
         ],
       ),
     );
@@ -226,8 +246,10 @@ class MoodHistoryPage extends StatelessWidget {
         backgroundColor: const Color(0xFFBFD9FB),
         elevation: 0,
         centerTitle: true,
-        title: const Text('History',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
+        title: const Text(
+          'History',
+          style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700),
+        ),
         actions: [
           IconButton(
             onPressed: () => _clearAll(context),
@@ -255,7 +277,7 @@ class MoodHistoryPage extends StatelessWidget {
               final text = (m['text'] as String?) ?? '';
               final moodName = (m['mood'] as String?) ?? Mood.neutral.name;
               final mood = Mood.values.firstWhere(
-                    (e) => e.name == moodName,
+                (e) => e.name == moodName,
                 orElse: () => Mood.neutral,
               );
 
@@ -267,7 +289,7 @@ class MoodHistoryPage extends StatelessWidget {
                   borderRadius: BorderRadius.circular(14),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
+                      color: Colors.black.withValues(alpha: 0.05),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -277,7 +299,10 @@ class MoodHistoryPage extends StatelessWidget {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     // 左侧表情
-                    Text(_moodEmoji[mood]!, style: const TextStyle(fontSize: 28)),
+                    Text(
+                      _moodEmoji[mood]!,
+                      style: const TextStyle(fontSize: 28),
+                    ),
                     const SizedBox(width: 12),
                     // 右侧文字
                     Expanded(
@@ -287,11 +312,16 @@ class MoodHistoryPage extends StatelessWidget {
                           if (ts != null)
                             Text(
                               _fmt(ts),
-                              style: const TextStyle(fontSize: 12, color: Colors.black54),
+                              style: const TextStyle(
+                                fontSize: 12,
+                                color: Colors.black54,
+                              ),
                             ),
                           const SizedBox(height: 6),
-                          Text(text.isEmpty ? '(No text)' : text,
-                              style: const TextStyle(fontSize: 16)),
+                          Text(
+                            text.isEmpty ? '(No text)' : text,
+                            style: const TextStyle(fontSize: 16),
+                          ),
                         ],
                       ),
                     ),

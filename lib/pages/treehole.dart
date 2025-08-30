@@ -93,7 +93,7 @@ class _TreeholeState extends State<Treehole> {
                     borderRadius: BorderRadius.circular(18),
                     boxShadow: [
                       BoxShadow(
-                        color: Colors.black.withOpacity(0.08),
+                        color: Colors.black.withValues(alpha: 0.08),
                         blurRadius: 8,
                         offset: const Offset(0, 4),
                       ),
@@ -105,14 +105,11 @@ class _TreeholeState extends State<Treehole> {
                         .orderBy('timestamp', descending: true)
                         .snapshots(),
                     builder: (context, snapshot) {
-                      if (snapshot.connectionState ==
-                          ConnectionState.waiting) {
-                        return const Center(
-                            child: CircularProgressIndicator());
+                      if (snapshot.connectionState == ConnectionState.waiting) {
+                        return const Center(child: CircularProgressIndicator());
                       }
 
-                      if (!snapshot.hasData ||
-                          snapshot.data!.docs.isEmpty) {
+                      if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
                         return const Center(
                           child: Text("No posts yet. Be the first!"),
                         );
@@ -125,7 +122,7 @@ class _TreeholeState extends State<Treehole> {
                         itemCount: posts.length,
                         itemBuilder: (context, index) {
                           final data =
-                          posts[index].data() as Map<String, dynamic>;
+                              posts[index].data() as Map<String, dynamic>;
                           final text = data['text'] ?? '';
                           final avatar = data['avatar'] ?? '🐰';
 
@@ -140,8 +137,10 @@ class _TreeholeState extends State<Treehole> {
                             child: Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(avatar,
-                                    style: const TextStyle(fontSize: 24)),
+                                Text(
+                                  avatar,
+                                  style: const TextStyle(fontSize: 24),
+                                ),
                                 const SizedBox(width: 10),
                                 Expanded(
                                   child: Text(
@@ -164,14 +163,16 @@ class _TreeholeState extends State<Treehole> {
             Padding(
               padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
               child: Container(
-                padding:
-                const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(18),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.08),
+                      color: Colors.black.withValues(alpha: 0.08),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
