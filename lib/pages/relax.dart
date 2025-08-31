@@ -206,7 +206,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     });
   }
 
-  void _showMeditationTip() {
+  /*void _showMeditationTip() {
     showDialog(
       context: context,
       builder: (_) => AlertDialog(
@@ -222,7 +222,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
         ],
       ),
     );
-  }
+  }*/
 
   @override
   void dispose() {
@@ -343,7 +343,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
+                    color: Colors.black.withValues(alpha: 0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -438,6 +438,7 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
       duration: const Duration(seconds: 2),
     );
     _audioPlayer = AudioPlayer();
+    _audioPlayer.audioCache = AudioCache(prefix: '');
   }
 
   @override
@@ -448,18 +449,25 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
   }
 
   void _toggleMeditation() async {
-    if (isPlaying) {
-      _soundAnimationController.stop();
-      //await _audioPlayer.stop();
-    } else {
-      _soundAnimationController.repeat();
-      //await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-      //await _audioPlayer.play(AssetSource('sounds/meditation.mp3'));
-    }
+    try {
+      if (isPlaying) {
+        _soundAnimationController.stop();
+        await _audioPlayer.stop();
+      } else {
+        _soundAnimationController.repeat();
+        await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+        await _audioPlayer.play(AssetSource('sounds/bundleOfJoy.mp3'));
+      }
 
-    setState(() {
-      isPlaying = !isPlaying;
-    });
+      setState(() {
+        isPlaying = !isPlaying;
+      });
+    } catch (e) {
+      print('Audio error: $e');
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to play audio: $e')));
+    }
   }
 
   @override
@@ -764,7 +772,7 @@ class _BalloonSprite extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(.12),
+                      color: Colors.black.withValues(alpha: .12),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -778,7 +786,7 @@ class _BalloonSprite extends StatelessWidget {
                   width: 10,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: Colors.white.withOpacity(.55),
+                    color: Colors.white.withValues(alpha: .55),
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
