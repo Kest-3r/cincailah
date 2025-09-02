@@ -1,9 +1,8 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fl_chart/fl_chart.dart'; // 新增：画折线图
 import '../widgets/nav.dart';
 
-//
 enum Mood { veryHappy, calm, neutral, sad, verySad }
 
 const _moodEmoji = {
@@ -21,294 +20,320 @@ class Diary extends StatefulWidget {
 }
 
 class _DiaryState extends State<Diary> {
+  final _formKey = GlobalKey<FormState>();
   final _ctrl = TextEditingController();
+  Mood _selected = Mood.veryHappy;
   bool _saving = false;
-  Mood _selected = Mood.veryHappy; // 默认选中
+  String? _error;
 
-  CollectionReference<Map<String, dynamic>> get _col {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('moods');
-  }
+  CollectionReference<Map<String, dynamic>> get _col =>
+      FirebaseFirestore.instance.collection('moods');
 
   Future<void> _save() async {
-    final text = _ctrl.text.trim();
-    if (text.isEmpty && _selected == Mood.neutral) {
-      // 可按需改：什么都没写且就是默认心情时不保存
-    }
+    if (_saving) return;
+    if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _saving = true);
-    await _col.add({
-      'text': text,
-      'mood': _selected.name,               // 👈 保存心情
-      'ts': FieldValue.serverTimestamp(),   // 服务器时间
+    FocusScope.of(context).unfocus();
+    setState(() {
+      _saving = true;
+      _error = null;
     });
-    _ctrl.clear();
-    setState(() => _saving = false);
-    if (mounted) {
+
+    try {
+      await _col.add({
+        'text': _ctrl.text.trim(),
+        'mood': _selected.name,
+        'ts': FieldValue.serverTimestamp(),
+      });
+
+      if (!mounted) return;
+      _ctrl.clear();
       ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Saved to Firebase')));
+          .showSnackBar(const SnackBar(content: Text('Saved!')));
+    } catch (e) {
+      setState(() => _error = 'Save failed: $e');
+    } finally {
+      if (mounted) setState(() => _saving = false);
     }
   }
 
-  void _openHistory() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const MoodHistoryPage()),
-    );
+  @override
+  void dispose() {
+    _ctrl.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFBFD9FB),
-      appBar: AppBar(
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
         backgroundColor: const Color(0xFFBFD9FB),
-        elevation: 0,
-        centerTitle: true,
-        title: const Text(
-          'Mood Diary',
-          style: TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w800,
-            color: Colors.black87,
-          ),
+        appBar: AppBar(
+          backgroundColor: const Color(0xFF8BB7D7),
+          title: const Text("Diary"),
+          centerTitle: true,
         ),
-        actions: [
-          IconButton(
-            tooltip: 'History',
-            onPressed: _openHistory,
-            icon: const Icon(Icons.history, color: Colors.black87),
-          ),
-        ],
-      ),
-      body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
-          child: Column(
-            children: [
-              // ====== 心情选择条（在输入框上方）======
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+        body: SafeArea(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // ===== 新增大标题 =====
+                const Center(
+                  child: Text(
+                    "Mood Diary",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
                     ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 14),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: Mood.values.map((m) {
-                    final selected = m == _selected;
-                    return GestureDetector(
-                      onTap: () => setState(() => _selected = m),
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: selected ? const Color(0xFFEFF6FF) : Colors.transparent,
-                          border: Border.all(
-                            color: selected ? const Color(0xFF3B82F6) : Colors.transparent,
-                            width: 2,
-                          ),
-                        ),
-                        child: Text(
-                          _moodEmoji[m]!,
-                          style: const TextStyle(fontSize: 28),
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
-              ),
-              const SizedBox(height: 16),
-
-              // ====== 卡片样式输入框 ======
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(18),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.06),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                child: TextField(
-                  controller: _ctrl,
-                  maxLines: 6,
-                  decoration: const InputDecoration(
-                    hintText: 'You can type something......',
-                    border: InputBorder.none,
                   ),
                 ),
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 20),
 
-              // ====== 保存按钮 ======
-              SizedBox(
-                width: double.infinity,
-                child: FilledButton(
-                  onPressed: _saving ? null : _save,
-                  child: _saving
-                      ? const SizedBox(
-                      width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                      : const Text("Save today's mood"),
+                // ===== 一周心情曲线 + AI 分析 =====
+                _WeeklyMoodChart(col: _col),
+
+                const SizedBox(height: 24),
+
+                // ===== 输入区 =====
+                Form(
+                  key: _formKey,
+                  autovalidateMode: AutovalidateMode.onUserInteraction,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      _MoodChips(
+                        selected: _selected,
+                        onChanged: (m) => setState(() => _selected = m),
+                      ),
+                      const SizedBox(height: 16),
+                      TextFormField(
+                        controller: _ctrl,
+                        minLines: 5,
+                        maxLines: 10,
+                        decoration: InputDecoration(
+                          labelText: "Write something...",
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(20.0),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                        validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Please write something' : null,
+                      ),
+                      const SizedBox(height: 24),
+                      if (_error != null) ...[
+                        Text(_error!, style: const TextStyle(color: Colors.red)),
+                        const SizedBox(height: 12),
+                      ],
+                      Center(
+                        child: SizedBox(
+                          width: 120,
+                          child: ElevatedButton(
+                            onPressed: _saving ? null : _save,
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8BB7D7),
+                              padding: const EdgeInsets.symmetric(vertical: 14),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(30.0),
+                              ),
+                            ),
+                            child: _saving
+                                ? const SizedBox(
+                              height: 20, width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2, color: Colors.white,
+                              ),
+                            )
+                                : const Text(
+                              'Save',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w900,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Stored in Firebase (Firestore). Tap History to view previous records.',
-                style: TextStyle(color: Colors.black54, fontSize: 12),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
+        bottomNavigationBar: const Nav(currentIndex: 1),
       ),
-      bottomNavigationBar: const Nav(),
     );
   }
 }
 
-// =================== 历史页 ===================
+/// 一周心情曲线 + AI 分析
+class _WeeklyMoodChart extends StatelessWidget {
+  final CollectionReference<Map<String, dynamic>> col;
+  const _WeeklyMoodChart({required this.col});
 
-class MoodHistoryPage extends StatelessWidget {
-  const MoodHistoryPage({super.key});
-
-  CollectionReference<Map<String, dynamic>> _col() {
-    final uid = FirebaseAuth.instance.currentUser!.uid;
-    return FirebaseFirestore.instance
-        .collection('users')
-        .doc(uid)
-        .collection('moods');
+  int _score(Mood m) {
+    switch (m) {
+      case Mood.veryHappy:
+        return 2;
+      case Mood.calm:
+        return 1;
+      case Mood.neutral:
+        return 0;
+      case Mood.sad:
+        return -1;
+      case Mood.verySad:
+        return -2;
+    }
   }
 
-  Future<void> _clearAll(BuildContext context) async {
-    final ok = await showDialog<bool>(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('Clear all records?'),
-        content: const Text('This deletes all moods for this user.'),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancel')),
-          FilledButton(onPressed: () => Navigator.pop(context, true), child: const Text('Clear')),
-        ],
-      ),
+  Mood _moodFromName(String name) {
+    return Mood.values.firstWhere(
+          (m) => m.name == name,
+      orElse: () => Mood.neutral,
     );
-    if (ok == true) {
-      final batch = FirebaseFirestore.instance.batch();
-      final qs = await _col().get();
-      for (final d in qs.docs) {
-        batch.delete(d.reference);
-      }
-      await batch.commit();
-    }
   }
 
   @override
   Widget build(BuildContext context) {
-    final query = _col().orderBy('ts', descending: true);
+    final since = DateTime.now().subtract(const Duration(days: 7));
+    final q = col.where('ts', isGreaterThanOrEqualTo: since).orderBy('ts');
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFBFD9FB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFBFD9FB),
-        elevation: 0,
-        centerTitle: true,
-        title: const Text('History',
-            style: TextStyle(color: Colors.black87, fontWeight: FontWeight.w700)),
-        actions: [
-          IconButton(
-            onPressed: () => _clearAll(context),
-            icon: const Icon(Icons.delete_forever, color: Colors.black87),
-          ),
-        ],
-      ),
-      body: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-        stream: query.snapshots(),
-        builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
+    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+      stream: q.snapshots(),
+      builder: (context, snap) {
+        if (!snap.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final docs = snap.data!.docs;
+        // 最近7天
+        final days = List<DateTime>.generate(7, (i) {
+          final d = DateTime.now().subtract(Duration(days: 6 - i));
+          return DateTime(d.year, d.month, d.day);
+        });
+
+        // 每天心情得分平均值
+        final Map<DateTime, List<int>> byDay = {for (final d in days) d: []};
+        for (final d in docs) {
+          final data = d.data();
+          final ts = (data['ts'] as Timestamp?)?.toDate();
+          final moodName = (data['mood'] as String?) ?? 'neutral';
+          final mood = _moodFromName(moodName);
+          if (ts != null) {
+            final key = DateTime(ts.year, ts.month, ts.day);
+            if (byDay.containsKey(key)) {
+              byDay[key]!.add(_score(mood));
+            }
           }
-          if (!snap.hasData || snap.data!.docs.isEmpty) {
-            return const Center(child: Text('No records yet'));
-          }
+        }
+        final avgScores = days.map((d) {
+          final list = byDay[d]!;
+          if (list.isEmpty) return 0.0;
+          return list.reduce((a, b) => a + b) / list.length;
+        }).toList();
 
-          final docs = snap.data!.docs;
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(12, 8, 12, 16),
-            itemCount: docs.length,
-            itemBuilder: (_, i) {
-              final m = docs[i].data();
-              final ts = (m['ts'] as Timestamp?)?.toDate();
-              final text = (m['text'] as String?) ?? '';
-              final moodName = (m['mood'] as String?) ?? Mood.neutral.name;
-              final mood = Mood.values.firstWhere(
-                    (e) => e.name == moodName,
-                orElse: () => Mood.neutral,
-              );
+        // AI 分析文字
+        String feedback;
+        final avgAll = avgScores.isEmpty ? 0.0 : avgScores.reduce((a, b) => a + b) / avgScores.length;
+        if (avgAll >= 1) {
+          feedback = "This week looks positive! Keep your good habits going 🌟";
+        } else if (avgAll <= -0.8) {
+          feedback = "It’s been a tough week 😔 Be kind to yourself and take some rest.";
+        } else {
+          feedback = "A mixed week — notice your patterns, reflect and adjust 💡";
+        }
 
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
-                padding: const EdgeInsets.all(14),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(14),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // 左侧表情
-                    Text(_moodEmoji[mood]!, style: const TextStyle(fontSize: 28)),
-                    const SizedBox(width: 12),
-                    // 右侧文字
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (ts != null)
-                            Text(
-                              _fmt(ts),
-                              style: const TextStyle(fontSize: 12, color: Colors.black54),
-                            ),
-                          const SizedBox(height: 6),
-                          Text(text.isEmpty ? '(No text)' : text,
-                              style: const TextStyle(fontSize: 16)),
-                        ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              "This Week's Mood",
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+            ),
+            const SizedBox(height: 12),
+            SizedBox(
+              height: 180,
+              child: LineChart(
+                LineChartData(
+                  borderData: FlBorderData(show: false),
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          final i = value.toInt();
+                          if (i < 0 || i >= days.length) return const SizedBox();
+                          final d = days[i];
+                          const weekdays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+                          return Text(weekdays[d.weekday - 1], style: const TextStyle(fontSize: 10));
+                        },
                       ),
                     ),
+                    leftTitles: AxisTitles(
+                      sideTitles: SideTitles(
+                        showTitles: true,
+                        interval: 1,
+                        getTitlesWidget: (value, meta) {
+                          return Text(value.toInt().toString(),
+                              style: const TextStyle(fontSize: 10));
+                        },
+                      ),
+                    ),
+                  ),
+                  gridData: FlGridData(show: true, horizontalInterval: 1),
+                  lineBarsData: [
+                    LineChartBarData(
+                      isCurved: true,
+                      spots: List.generate(
+                        avgScores.length,
+                            (i) => FlSpot(i.toDouble(), avgScores[i]),
+                      ),
+                      barWidth: 3,
+                      color: Colors.indigo,
+                      dotData: FlDotData(show: true),
+                    ),
                   ],
                 ),
-              );
-            },
-          );
-        },
-      ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              feedback,
+              style: const TextStyle(fontSize: 14, color: Colors.black87),
+            ),
+          ],
+        );
+      },
     );
   }
+}
 
-  String _fmt(DateTime ts) {
-    final d = ts.toLocal();
-    return '${d.year}-${_two(d.month)}-${_two(d.day)}  ${_two(d.hour)}:${_two(d.minute)}';
+/// Mood 选择区
+class _MoodChips extends StatelessWidget {
+  final Mood selected;
+  final ValueChanged<Mood> onChanged;
+  const _MoodChips({required this.selected, required this.onChanged});
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 10,
+      children: Mood.values.map((m) {
+        return ChoiceChip(
+          label: Text(_moodEmoji[m]!),
+          selected: m == selected,
+          onSelected: (_) => onChanged(m),
+        );
+      }).toList(),
+    );
   }
-
-  String _two(int x) => x.toString().padLeft(2, '0');
 }
