@@ -46,3 +46,7 @@ app.*.map.json
 
 #API Key related
 **/.env
+.env
+.env.*
+*.env
+lib/env/env.g.dart
