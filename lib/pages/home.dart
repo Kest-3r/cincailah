@@ -5,6 +5,7 @@ import '../pages/treehole.dart';
 import '../pages/sign_up.dart';
 import '../pages/login.dart';
 import '../pages/welcome.dart';
+import '../pages/ai_companion.dart';
 
 class Home extends StatelessWidget {
   const Home({super.key});
@@ -55,11 +56,23 @@ class Home extends StatelessWidget {
               iconPath: "images/Tree.png",
               title: "Treehole",
               description:
-              "Write your thought anonymously\nNo names, just your feelings",
+                  "Write your thought anonymously\nNo names, just your feelings",
               onPressed: () {
                 Navigator.push(
                   context,
                   MaterialPageRoute(builder: (context) => const Treehole()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            CustomButton(
+              iconPath: "images/AI.png",
+              title: "AI Companion Miu",
+              description: "Ease your mind with our furry AI",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AICompanion()),
                 );
               },
             ),
@@ -70,7 +83,6 @@ class Home extends StatelessWidget {
     );
   }
 }
-
 
 class ProfileHeader extends StatelessWidget {
   final String iconPath;
@@ -90,11 +102,7 @@ class ProfileHeader extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
         // 🌞 Sun (or any icon you pass in via iconPath)
-        Image.asset(
-          iconPath,
-          width: 120,
-          height: 120,
-        ),
+        Image.asset(iconPath, width: 120, height: 120),
         const SizedBox(width: 16),
 
         // Two lines of text
@@ -103,18 +111,12 @@ class ProfileHeader extends StatelessWidget {
           children: [
             Text(
               line1,
-              style: const TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-              ),
+              style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 4),
             Text(
               line2,
-              style: const TextStyle(
-                fontSize: 18,
-                color: Colors.black54,
-              ),
+              style: const TextStyle(fontSize: 18, color: Colors.black54),
             ),
           ],
         ),
@@ -149,26 +151,23 @@ class CustomButton extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Image.asset(
-            iconPath,
-            width: 80,
-            height: 80,
-          ),
+          Image.asset(iconPath, width: 80, height: 80),
           const SizedBox(width: 12),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title,
-                    style: const TextStyle(
-                        fontSize: 18, fontWeight: FontWeight.bold)),
+                Text(
+                  title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
                 const SizedBox(height: 4),
                 Text(
                   description,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.black54,
-                  ),
+                  style: const TextStyle(fontSize: 14, color: Colors.black54),
                 ),
               ],
             ),
