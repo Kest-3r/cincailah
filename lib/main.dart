@@ -10,7 +10,7 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Set OpenAI API key once
-  OpenAI.apiKey = "YOUR_OPENAI_API_KEY";
+  OpenAI.apiKey = Env.key1;
   runApp(const MyApp());
 }
 
