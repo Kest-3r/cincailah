@@ -402,9 +402,9 @@ class _DeadlineState extends State<Deadline> {
     final grouped = _groupedVisible;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFE6F0F7),
+      backgroundColor: const Color(0xFFBFD9FB),
       appBar: AppBar(
-        backgroundColor: const Color(0xFFE6F0F7),
+        backgroundColor: const Color(0xFFBFD9FB),
         elevation: 0,
         scrolledUnderElevation: 0,
         surfaceTintColor: Colors.transparent,
@@ -544,7 +544,7 @@ class _DeadlineState extends State<Deadline> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: _openFilterSheet,
+                    onPressed: _openFilterSheet, 
                   ),
                 ],
               ),
