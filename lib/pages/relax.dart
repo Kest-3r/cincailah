@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../widgets/nav.dart';
+import 'white_noise.dart'; // White Noise Mixer page
 
 class Relax extends StatefulWidget {
   const Relax({super.key});
@@ -11,19 +12,19 @@ class Relax extends StatefulWidget {
 }
 
 class _RelaxState extends State<Relax> with TickerProviderStateMixin {
-  // ========== 小熊呼吸（明显 + 文案同步） ==========
+  // ========== Bear breathing (animation + synced copy) ==========
   late final AnimationController _breathCtrl;
   late final Animation<double> _breath;
   bool _breathing = false;
 
-  // 吸/停/呼/停（毫秒）
+  // inhale/hold/exhale/hold (ms)
   static const int _inhaleMs = 5000;
   static const int _holdTopMs = 300;
   static const int _exhaleMs = 6000;
   static const int _holdBottomMs = 300;
   static const int _totalMs = _inhaleMs + _holdTopMs + _exhaleMs + _holdBottomMs;
 
-  // 用于测量小熊位置（供气球卡片计算目标高度）
+  // For measuring bear position (balloon card computes target height)
   final GlobalKey _bearKey = GlobalKey();
 
   @override
@@ -34,7 +35,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
       duration: const Duration(milliseconds: _totalMs),
     );
 
-    // 0.88 -> 1.22 (吸) -> 1.22(停) -> 0.88(呼) -> 0.88(停)
+    // 0.88 -> 1.22 (inhale) -> 1.22(hold) -> 0.88(exhale) -> 0.88(hold)
     _breath = TweenSequence<double>([
       TweenSequenceItem(
         tween: Tween(begin: 0.88, end: 1.22)
@@ -57,7 +58,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     ]).animate(_breathCtrl)
       ..addStatusListener((s) {
         if (s == AnimationStatus.completed) {
-          _breathCtrl.forward(from: 0); // 循环
+          _breathCtrl.forward(from: 0); // loop
         }
       });
   }
@@ -83,7 +84,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     return 'Hold';
   }
 
-  // ========== Fortune Sun 随机语录 ==========
+  // ========== Fortune Sun random quotes ==========
   String? _fortuneText;
   Timer? _fortuneTimer;
 
@@ -162,7 +163,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFFBFD9FB),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Relax', style: TextStyle(fontWeight: FontWeight.bold),),
+        title: const Text('Relax', style: TextStyle(fontWeight: FontWeight.bold)),
         centerTitle: true,
         backgroundColor: const Color(0xFFBFD9FB),
         elevation: 0,
@@ -173,11 +174,11 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
         children: [
           const SizedBox(height: 84),
 
-          // ===== 顶部小熊（带光圈） =====
+          // ===== Bear (with halo) =====
           Center(
             child: GestureDetector(
               onTap: _toggleBreathing,
-              child: Container( // 用于测量位置
+              child: Container( // for measurement
                 key: _bearKey,
                 child: AnimatedBuilder(
                   animation: _breathCtrl,
@@ -185,8 +186,8 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                     final scale = _breath.value;
                     final haloScale = 1.0 + (scale - 1.0) * 0.25;
                     final haloOpacity =
-                    (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20)
-                        .clamp(0.25, 0.45);
+                        (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20)
+                            .clamp(0.25, 0.45);
                     return Stack(
                       alignment: Alignment.center,
                       children: [
@@ -236,7 +237,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
 
           const SizedBox(height: 28),
 
-          // ===== 两张方形卡片 =====
+          // ===== Two square cards =====
           Row(
             children: [
               Expanded(
@@ -257,7 +258,6 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
             ],
           ),
 
-          // Fortune 文案（放在气球卡片之上，避免遮挡）
           if (_fortuneText != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -283,7 +283,33 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
 
           const SizedBox(height: 16),
 
-          // ===== 气球：按钮 → 静止聚拢 → 起飞到小熊头顶停住 → 再点复位 =====
+          // NEW: White Noise Mixer button OUTSIDE the balloon card
+          SizedBox(
+            width: double.infinity,
+            child: FilledButton.icon(
+              style: ElevatedButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+                backgroundColor: Colors.white,
+                foregroundColor: Colors.black87,
+                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(18),
+                ),
+                elevation: 4,
+              ),
+              icon: const Icon(Icons.graphic_eq),
+              label: const Text('White Noise Mixer'),
+              onPressed: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const WhiteNoisePage()),
+                );
+              },
+            ),
+          ),
+
+          const SizedBox(height: 12),
+
+          // ===== Balloons: button → group still → fly to bear top → tap to reset =====
           BalloonToggleCard(bearKey: _bearKey),
         ],
       ),
@@ -291,7 +317,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
   }
 }
 
-// ================== 公用方形卡片 ==================
+// ================== Shared square card ==================
 class _SquareCard extends StatelessWidget {
   final String iconPath;
   final String title;
@@ -335,12 +361,12 @@ class _SquareCard extends StatelessWidget {
   }
 }
 
-// ================== 气球卡片（自适应飞行高度） ==================
+// ================== Balloon card (auto target height) ==================
 enum _BalloonStage { button, ready, flying, docked }
 
 class BalloonToggleCard extends StatefulWidget {
   const BalloonToggleCard({super.key, required this.bearKey});
-  final GlobalKey bearKey; // 小熊位置 key
+  final GlobalKey bearKey; // bear position key
 
   @override
   State<BalloonToggleCard> createState() => _BalloonToggleCardState();
@@ -353,10 +379,10 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
   late final AnimationController _flyCtrl;
   late final Animation<double> _t;
 
-  // 需要上升的像素（负值向上）
+  // Rise pixels (negative is up)
   double _risePx = -160.0;
 
-  // 起飞基准位置（卡片内部可视区的底部）
+  // Launch baseline (bottom of visible area inside card)
   final GlobalKey _originKey = GlobalKey();
 
   @override
@@ -370,7 +396,7 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
 
     _flyCtrl.addStatusListener((s) {
       if (s == AnimationStatus.completed) {
-        setState(() => _stage = _BalloonStage.docked); // 顶部停住
+        setState(() => _stage = _BalloonStage.docked); // dock at top
       }
     });
   }
@@ -381,31 +407,31 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
     super.dispose();
   }
 
-  // 计算“卡片底部 → 小熊顶部”的距离，得到上升像素
+  // Compute distance "card bottom → bear top"
   void _computeRise() {
     final bearBox =
-    widget.bearKey.currentContext?.findRenderObject() as RenderBox?;
+        widget.bearKey.currentContext?.findRenderObject() as RenderBox?;
     final originBox =
-    _originKey.currentContext?.findRenderObject() as RenderBox?;
+        _originKey.currentContext?.findRenderObject() as RenderBox?;
     if (bearBox == null || originBox == null) return;
 
-    final bearTop = bearBox.localToGlobal(Offset.zero).dy + 6; // 稍微留白
+    final bearTop = bearBox.localToGlobal(Offset.zero).dy + 6; // small margin
     final originBottom =
         originBox.localToGlobal(Offset(0, originBox.size.height)).dy;
 
-    setState(() => _risePx = (bearTop - originBottom) - 14); // 再上移一点
+    setState(() => _risePx = (bearTop - originBottom) + 29); // up a bit more
   }
 
   void _onTap() {
     if (_stage == _BalloonStage.button) {
-      setState(() => _stage = _BalloonStage.ready); // 第一次：出现静止气球
+      setState(() => _stage = _BalloonStage.ready); // first: show still balloons
     } else if (_stage == _BalloonStage.ready) {
       _computeRise();
-      setState(() => _stage = _BalloonStage.flying); // 第二次：起飞
+      setState(() => _stage = _BalloonStage.flying); // second: fly
       _flyCtrl.forward(from: 0);
     } else if (_stage == _BalloonStage.docked) {
       setState(() {
-        _stage = _BalloonStage.button; // 第三次：复位
+        _stage = _BalloonStage.button; // third: reset
         _flyCtrl.reset();
       });
     }
@@ -434,63 +460,66 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                   child: _stage == _BalloonStage.button
                       ? const SizedBox.shrink()
                       : AnimatedBuilder(
-                    animation: _t,
-                    builder: (_, __) {
-                      final t = _stage == _BalloonStage.flying
-                          ? _t.value
-                          : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
+                          animation: _t,
+                          builder: (_, __) {
+                            final t = _stage == _BalloonStage.flying
+                                ? _t.value
+                                : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
 
-                      double y(double base) => _risePx * t * base; // 上升
-                      double spread(double maxDx) {
-                        final s = Curves.easeInOut
-                            .transform((t - 0.1).clamp(0, 1));
-                        return maxDx * s; // 左右散开
-                      }
+                            double y(double base) => _risePx * t * base; // up
+                            double spread(double maxDx) {
+                              final s = Curves.easeInOut
+                                  .transform((t - 0.1).clamp(0, 1));
+                              return maxDx * s; // left-right spread
+                            }
 
-                      return Stack(
-                        alignment: Alignment.bottomCenter,
-                        children: [
-                          _BalloonSprite(
-                            dx: -spread(60),
-                            dy: y(1.00),
-                            colors: const [
-                              Color(0xFFFF9FB9),
-                              Color(0xFFFFC8D8)
-                            ],
-                            stringBend: -18,
-                          ),
-                          _BalloonSprite(
-                            dx: 0,
-                            dy: y(1.05),
-                            colors: const [
-                              Color(0xFFB7D7F8),
-                              Color(0xFFD8E9FF)
-                            ],
-                            stringBend: 0,
-                          ),
-                          _BalloonSprite(
-                            dx: spread(60),
-                            dy: y(0.95),
-                            colors: const [
-                              Color(0xFFFFEB99),
-                              Color(0xFFFFF5C7)
-                            ],
-                            stringBend: 18,
-                          ),
-                        ],
-                      );
-                    },
-                  ),
+                            return Stack(
+                              alignment: Alignment.bottomCenter,
+                              children: [
+                                _BalloonSprite(
+                                  dx: -spread(60),
+                                  dy: y(1.00),
+                                  colors: const [
+                                    Color(0xFFFF9FB9),
+                                    Color(0xFFFFC8D8)
+                                  ],
+                                  stringBend: -18,
+                                ),
+                                _BalloonSprite(
+                                  dx: 0,
+                                  dy: y(1.05),
+                                  colors: const [
+                                    Color(0xFFB7D7F8),
+                                    Color(0xFFD8E9FF)
+                                  ],
+                                  stringBend: 0,
+                                ),
+                                _BalloonSprite(
+                                  dx: spread(60),
+                                  dy: y(0.95),
+                                  colors: const [
+                                    Color(0xFFFFEB99),
+                                    Color(0xFFFFF5C7)
+                                  ],
+                                  stringBend: 18,
+                                ),
+                              ],
+                            );
+                          },
+                        ),
                 ),
-                const SizedBox(height: 6),
+
+                const SizedBox(height: 12),
+
+                // Status text (button for White Noise moved OUTSIDE the card)
                 Text(
                   _stage == _BalloonStage.button
                       ? "Tap to show the balloons"
                       : (_stage == _BalloonStage.ready
-                      ? "Tap again to let them fly"
-                      : (_stage == _BalloonStage.flying
-                      ? "Flying…"
-                      : "Balloons docked – tap to reset")),
+                          ? "Tap again to let them fly"
+                          : (_stage == _BalloonStage.flying
+                              ? "Flying…"
+                              : "Balloons docked – tap to reset")),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
@@ -516,7 +545,7 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
   }
 }
 
-// =============== 单个气球（渐变 + 高光 + 弧线绳） ===============
+// =============== Single balloon (gradient + highlight + curved string) ===============
 class _BalloonSprite extends StatelessWidget {
   final double dx, dy;
   final List<Color> colors;
@@ -535,7 +564,7 @@ class _BalloonSprite extends StatelessWidget {
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          // 球体
+          // Body
           Stack(
             alignment: Alignment.topLeft,
             children: [
@@ -572,7 +601,7 @@ class _BalloonSprite extends StatelessWidget {
               ),
             ],
           ),
-          // 细绳
+          // String
           SizedBox(
             width: 46,
             height: 50,
