@@ -2,6 +2,9 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
+import 'package:audio_session/audio_session.dart';
+
 import '../widgets/nav.dart';
 import 'white_noise.dart'; // White Noise Mixer page
 
@@ -18,49 +21,88 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
   bool _breathing = false;
 
   // inhale/hold/exhale/hold (ms)
-  static const int _inhaleMs = 5000;
-  static const int _holdTopMs = 300;
-  static const int _exhaleMs = 6000;
-  static const int _holdBottomMs = 300;
-  static const int _totalMs = _inhaleMs + _holdTopMs + _exhaleMs + _holdBottomMs;
+  static const int _inhaleMs = 4000;
+  static const int _holdTopMs = 4000;
+  static const int _exhaleMs = 4000;
+  static const int _holdBottomMs = 5000;
+  static const int _totalMs =
+      _inhaleMs + _holdTopMs + _exhaleMs + _holdBottomMs;
 
   // For measuring bear position (balloon card computes target height)
   final GlobalKey _bearKey = GlobalKey();
 
+  // ========== Meditation audio ==========
+  AudioPlayer? _medPlayer;
+  bool _medPlaying = false;
+
   @override
   void initState() {
     super.initState();
+
     _breathCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: _totalMs),
     );
 
     // 0.88 -> 1.22 (inhale) -> 1.22(hold) -> 0.88(exhale) -> 0.88(hold)
-    _breath = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.88, end: 1.22)
-            .chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
-        weight: _inhaleMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.22),
-        weight: _holdTopMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.22, end: 0.88)
-            .chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
-        weight: _exhaleMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(0.88),
-        weight: _holdBottomMs.toDouble(),
-      ),
-    ]).animate(_breathCtrl)
-      ..addStatusListener((s) {
-        if (s == AnimationStatus.completed) {
-          _breathCtrl.forward(from: 0); // loop
-        }
-      });
+    _breath =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 0.88,
+              end: 1.22,
+            ).chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
+            weight: _inhaleMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(1.22),
+            weight: _holdTopMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 1.22,
+              end: 0.88,
+            ).chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
+            weight: _exhaleMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(0.88),
+            weight: _holdBottomMs.toDouble(),
+          ),
+        ]).animate(_breathCtrl)..addStatusListener((s) {
+          if (s == AnimationStatus.completed) {
+            _breathCtrl.forward(from: 0); // loop
+          }
+        });
+  }
+
+  Future<void> _ensureMedPlayer() async {
+    if (_medPlayer != null) return;
+    final session = await AudioSession.instance;
+    await session.configure(const AudioSessionConfiguration.music());
+
+    final p = AudioPlayer();
+    await p.setLoopMode(LoopMode.one);
+    await p.setAudioSource(AudioSource.asset('audio/meditation.ogg'));
+    await p.setVolume(0.7);
+    _medPlayer = p;
+
+    // (Optional) Keep UI in sync if playback changes outside your button
+    _medPlayer!.playingStream.listen((isPlaying) {
+      if (mounted) setState(() => _medPlaying = isPlaying);
+    });
+  }
+
+  Future<void> _toggleMeditation() async {
+    await _ensureMedPlayer();
+
+    if (_medPlaying) {
+      setState(() => _medPlaying = false); // flip label immediately
+      _medPlayer!.stop(); // don't await
+    } else {
+      setState(() => _medPlaying = true); // flip label immediately
+      _medPlayer!.play(); // don't await (starts playing)
+    }
   }
 
   void _toggleBreathing() {
@@ -89,41 +131,107 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
   Timer? _fortuneTimer;
 
   final List<String> _quotes = [
-    "The sun will rise, and we will try again.","Calm mind brings inner strength.","Breathe deeply, let worries fade.",
-    "Every sunset brings the promise of a new dawn.","Peace begins with a smile.","Happiness radiates from within.",
-    "The present moment is all you need.","Shine like the sun, even behind the clouds.",
-    "Every breath is a chance to begin again.","Serenity is the true power of life.","The quiet morning carries endless hope.",
-    "Gratitude turns little things into enough.","The world is more beautiful when the heart is calm.",
-    "Light comes after the darkest night.","Sometimes silence is the best answer.","Smiles are free yet priceless.",
-    "Simple things bring the greatest joy.","Storms teach us how to dance in the rain.","Your heart knows the way, run in that direction.",
-    "Kindness is never wasted.","Peace is found within, not outside.","The softest hearts carry the strongest souls.",
-    "Even small lights can brighten the darkest places.","Your breath is your anchor.","Slow down, life is not a race.",
-    "Nature whispers healing words.","The sun shines even when clouds cover it.","Every ending is a hidden beginning.",
-    "Balance is the secret to happiness.","Time heals what reason cannot.","Patience grows beautiful things.",
-    "Life is not perfect, but moments can be.","The soul needs rest to bloom.","Dreams grow in silence.",
-    "Self-love is the seed of peace.","No storm lasts forever.","Hearts speak the language of truth.",
-    "Change is the rhythm of life.","Even the moon borrows light.","You are enough, always.",
-    "True wealth is a peaceful heart.","Soft rain grows green fields.","Joy is not found, it is created.",
-    "When you pause, the world softens.","Gratitude unlocks abundance.","Inner calm reflects outer beauty.",
-    "Listen more, worry less.","The best journeys are inward.","Gentleness conquers anger.",
-    "Moments matter more than years.","A calm ocean mirrors the sky.","Hope is stronger than fear.",
-    "Hearts heal in time.","Every flower blooms in its season.","The breeze carries forgotten dreams.",
-    "Smiles are bridges between souls.","Peaceful thoughts invite peaceful days.","Courage is quiet strength.",
-    "Contentment is the purest wealth.","Life flows like water, let it be.","Breathe, and let it go.",
-    "Happiness begins with acceptance.","Trust the timing of your life.","Rest is also progress.",
-    "The stars remind us we are not alone.","Stillness is where wisdom lives.","Every seed hides a forest.",
-    "Gentle words build strong bonds.","Healing takes patience, not haste.","The simplest joys are the richest.",
-    "Your light is needed in this world.","Calm seas create clear reflections.","Smiles open locked hearts.",
-    "Every step matters, no matter how small.","Let go, and grow.","A kind word lingers forever.",
-    "Silence sometimes speaks loudest.","Inner peace is true success.","Be the warmth you seek.",
-    "The present moment is home.","Even shadows prove there is light.","Gentleness is strength under control.",
-    "Hearts bloom in kindness.","Your breath is your safe place.","The future begins with this breath.",
-    "Time flows like a quiet river.","A grateful heart is a magnet for peace.","Peace makes every place beautiful.",
-    "Even whispers carry wisdom.","The earth heals those who listen.","Smiles are sunlight for the soul.",
-    "Let your worries rest in silence.","The sky never stops being blue above the clouds.",
-    "Every calm breath builds strength.","Small joys make a big life.","The heart always finds its way home.",
-    "Still waters run deep.","Happiness blooms when shared.","Your calmness is your crown.",
-    "Every day is a new chance for peace.","The quiet soul shines the brightest.",
+    "The sun will rise, and we will try again.",
+    "Calm mind brings inner strength.",
+    "Breathe deeply, let worries fade.",
+    "Every sunset brings the promise of a new dawn.",
+    "Peace begins with a smile.",
+    "Happiness radiates from within.",
+    "The present moment is all you need.",
+    "Shine like the sun, even behind the clouds.",
+    "Every breath is a chance to begin again.",
+    "Serenity is the true power of life.",
+    "The quiet morning carries endless hope.",
+    "Gratitude turns little things into enough.",
+    "The world is more beautiful when the heart is calm.",
+    "Light comes after the darkest night.",
+    "Sometimes silence is the best answer.",
+    "Smiles are free yet priceless.",
+    "Simple things bring the greatest joy.",
+    "Storms teach us how to dance in the rain.",
+    "Your heart knows the way, run in that direction.",
+    "Kindness is never wasted.",
+    "Peace is found within, not outside.",
+    "The softest hearts carry the strongest souls.",
+    "Even small lights can brighten the darkest places.",
+    "Your breath is your anchor.",
+    "Slow down, life is not a race.",
+    "Nature whispers healing words.",
+    "The sun shines even when clouds cover it.",
+    "Every ending is a hidden beginning.",
+    "Balance is the secret to happiness.",
+    "Time heals what reason cannot.",
+    "Patience grows beautiful things.",
+    "Life is not perfect, but moments can be.",
+    "The soul needs rest to bloom.",
+    "Dreams grow in silence.",
+    "Self-love is the seed of peace.",
+    "No storm lasts forever.",
+    "Hearts speak the language of truth.",
+    "Change is the rhythm of life.",
+    "Even the moon borrows light.",
+    "You are enough, always.",
+    "True wealth is a peaceful heart.",
+    "Soft rain grows green fields.",
+    "Joy is not found, it is created.",
+    "When you pause, the world softens.",
+    "Gratitude unlocks abundance.",
+    "Inner calm reflects outer beauty.",
+    "Listen more, worry less.",
+    "The best journeys are inward.",
+    "Gentleness conquers anger.",
+    "Moments matter more than years.",
+    "A calm ocean mirrors the sky.",
+    "Hope is stronger than fear.",
+    "Hearts heal in time.",
+    "Every flower blooms in its season.",
+    "The breeze carries forgotten dreams.",
+    "Smiles are bridges between souls.",
+    "Peaceful thoughts invite peaceful days.",
+    "Courage is quiet strength.",
+    "Contentment is the purest wealth.",
+    "Life flows like water, let it be.",
+    "Breathe, and let it go.",
+    "Happiness begins with acceptance.",
+    "Trust the timing of your life.",
+    "Rest is also progress.",
+    "The stars remind us we are not alone.",
+    "Stillness is where wisdom lives.",
+    "Every seed hides a forest.",
+    "Gentle words build strong bonds.",
+    "Healing takes patience, not haste.",
+    "The simplest joys are the richest.",
+    "Your light is needed in this world.",
+    "Calm seas create clear reflections.",
+    "Smiles open locked hearts.",
+    "Every step matters, no matter how small.",
+    "Let go, and grow.",
+    "A kind word lingers forever.",
+    "Silence sometimes speaks loudest.",
+    "Inner peace is true success.",
+    "Be the warmth you seek.",
+    "The present moment is home.",
+    "Even shadows prove there is light.",
+    "Gentleness is strength under control.",
+    "Hearts bloom in kindness.",
+    "Your breath is your safe place.",
+    "The future begins with this breath.",
+    "Time flows like a quiet river.",
+    "A grateful heart is a magnet for peace.",
+    "Peace makes every place beautiful.",
+    "Even whispers carry wisdom.",
+    "The earth heals those who listen.",
+    "Smiles are sunlight for the soul.",
+    "Let your worries rest in silence.",
+    "The sky never stops being blue above the clouds.",
+    "Every calm breath builds strength.",
+    "Small joys make a big life.",
+    "The heart always finds its way home.",
+    "Still waters run deep.",
+    "Happiness blooms when shared.",
+    "Your calmness is your crown.",
+    "Every day is a new chance for peace.",
+    "The quiet soul shines the brightest.",
   ];
 
   void _showFortuneSun() {
@@ -135,25 +243,11 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     });
   }
 
-  void _showMeditationTip() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('5 Minutes meditation'),
-        content: const Text(
-          'Music coming soon.\nFor now, take a slow deep breath and enjoy the moment.',
-        ),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context), child: const Text('OK'))
-        ],
-      ),
-    );
-  }
-
   @override
   void dispose() {
     _breathCtrl.dispose();
     _fortuneTimer?.cancel();
+    _medPlayer?.dispose();
     super.dispose();
   }
 
@@ -163,7 +257,10 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
       backgroundColor: const Color(0xFFBFD9FB),
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: const Text('Relax', style: TextStyle(fontWeight: FontWeight.bold)),
+        title: const Text(
+          'Relax',
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
         centerTitle: true,
         backgroundColor: const Color(0xFFBFD9FB),
         elevation: 0,
@@ -178,7 +275,8 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
           Center(
             child: GestureDetector(
               onTap: _toggleBreathing,
-              child: Container( // for measurement
+              child: Container(
+                // for measurement
                 key: _bearKey,
                 child: AnimatedBuilder(
                   animation: _breathCtrl,
@@ -186,8 +284,10 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                     final scale = _breath.value;
                     final haloScale = 1.0 + (scale - 1.0) * 0.25;
                     final haloOpacity =
-                        (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20)
-                            .clamp(0.25, 0.45);
+                        (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20).clamp(
+                          0.25,
+                          0.45,
+                        );
                     return Stack(
                       alignment: Alignment.center,
                       children: [
@@ -243,8 +343,8 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
               Expanded(
                 child: _SquareCard(
                   iconPath: 'images/Headset.png',
-                  title: '5 Minutes',
-                  onTap: _showMeditationTip,
+                  title: _medPlaying ? 'Stop Meditation' : 'Meditation',
+                  onTap: _toggleMeditation,
                 ),
               ),
               const SizedBox(width: 16),
@@ -258,6 +358,43 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
             ],
           ),
 
+          // Mini now-playing strip (visible only while meditation is active)
+          /*
+          if (_medPlaying) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  const Icon(Icons.self_improvement),
+                  const SizedBox(width: 10),
+                  const Expanded(
+                    child: Text(
+                      'Meditation is playing (loops)',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
+                  ),
+                  TextButton.icon(
+                    onPressed: _medLoading ? null : _toggleMeditation,
+                    icon: const Icon(Icons.stop),
+                    label: const Text('Stop'),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          */
           if (_fortuneText != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -283,7 +420,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
 
           const SizedBox(height: 16),
 
-          // NEW: White Noise Mixer button OUTSIDE the balloon card
+          // White Noise Mixer button (outside balloon card)
           SizedBox(
             width: double.infinity,
             child: FilledButton.icon(
@@ -291,7 +428,10 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                 padding: const EdgeInsets.symmetric(vertical: 14),
                 backgroundColor: Colors.white,
                 foregroundColor: Colors.black87,
-                textStyle: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
+                textStyle: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(18),
                 ),
@@ -351,7 +491,10 @@ class _SquareCard extends StatelessWidget {
                 softWrap: true,
                 maxLines: 2,
                 overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ],
           ),
@@ -379,8 +522,8 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
   late final AnimationController _flyCtrl;
   late final Animation<double> _t;
 
-  // Rise pixels (negative is up)
-  double _risePx = -160.0;
+  // Rise pixels (positive moves up here so it's intuitive in code)
+  double _risePx = 160.0;
 
   // Launch baseline (bottom of visible area inside card)
   final GlobalKey _originKey = GlobalKey();
@@ -416,15 +559,18 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
     if (bearBox == null || originBox == null) return;
 
     final bearTop = bearBox.localToGlobal(Offset.zero).dy + 6; // small margin
-    final originBottom =
-        originBox.localToGlobal(Offset(0, originBox.size.height)).dy;
+    final originBottom = originBox
+        .localToGlobal(Offset(0, originBox.size.height))
+        .dy;
 
-    setState(() => _risePx = (bearTop - originBottom) + 29); // up a bit more
+    setState(() => _risePx = (originBottom - bearTop) + 29); // positive up
   }
 
   void _onTap() {
     if (_stage == _BalloonStage.button) {
-      setState(() => _stage = _BalloonStage.ready); // first: show still balloons
+      setState(
+        () => _stage = _BalloonStage.ready,
+      ); // first: show still balloons
     } else if (_stage == _BalloonStage.ready) {
       _computeRise();
       setState(() => _stage = _BalloonStage.flying); // second: fly
@@ -466,10 +612,11 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                                 ? _t.value
                                 : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
 
-                            double y(double base) => _risePx * t * base; // up
+                            double y(double base) => -_risePx * t * base; // up
                             double spread(double maxDx) {
-                              final s = Curves.easeInOut
-                                  .transform((t - 0.1).clamp(0, 1));
+                              final s = Curves.easeInOut.transform(
+                                (t - 0.1).clamp(0, 1),
+                              );
                               return maxDx * s; // left-right spread
                             }
 
@@ -481,7 +628,7 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                                   dy: y(1.00),
                                   colors: const [
                                     Color(0xFFFF9FB9),
-                                    Color(0xFFFFC8D8)
+                                    Color(0xFFFFC8D8),
                                   ],
                                   stringBend: -18,
                                 ),
@@ -490,7 +637,7 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                                   dy: y(1.05),
                                   colors: const [
                                     Color(0xFFB7D7F8),
-                                    Color(0xFFD8E9FF)
+                                    Color(0xFFD8E9FF),
                                   ],
                                   stringBend: 0,
                                 ),
@@ -499,7 +646,7 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                                   dy: y(0.95),
                                   colors: const [
                                     Color(0xFFFFEB99),
-                                    Color(0xFFFFF5C7)
+                                    Color(0xFFFFF5C7),
                                   ],
                                   stringBend: 18,
                                 ),
@@ -511,15 +658,15 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
 
                 const SizedBox(height: 12),
 
-                // Status text (button for White Noise moved OUTSIDE the card)
+                // Status text
                 Text(
                   _stage == _BalloonStage.button
                       ? "Tap to show the balloons"
                       : (_stage == _BalloonStage.ready
-                          ? "Tap again to let them fly"
-                          : (_stage == _BalloonStage.flying
-                              ? "Flying…"
-                              : "Balloons docked – tap to reset")),
+                            ? "Tap again to let them fly"
+                            : (_stage == _BalloonStage.flying
+                                  ? "Flying…"
+                                  : "Balloons docked – tap to reset")),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
@@ -605,9 +752,7 @@ class _BalloonSprite extends StatelessWidget {
           SizedBox(
             width: 46,
             height: 50,
-            child: CustomPaint(
-              painter: _StringPainter(bendX: stringBend),
-            ),
+            child: CustomPaint(painter: _StringPainter(bendX: stringBend)),
           ),
         ],
       ),
