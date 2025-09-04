@@ -70,8 +70,9 @@ class _DiaryState extends State<Diary> {
       child: Scaffold(
         backgroundColor: const Color(0xFFBFD9FB),
         appBar: AppBar(
-          backgroundColor: const Color(0xFF8BB7D7),
-          title: const Text("Diary"),
+          backgroundColor: const Color(0xFFBFD9FB),
+          automaticallyImplyLeading: false,
+          title: const Text("Diary", style: TextStyle(fontWeight: FontWeight.bold)),
           centerTitle: true,
         ),
         body: SafeArea(

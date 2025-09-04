@@ -161,7 +161,8 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     return Scaffold(
       backgroundColor: const Color(0xFFBFD9FB),
       appBar: AppBar(
-        title: const Text('Relax'),
+        automaticallyImplyLeading: false,
+        title: const Text('Relax', style: TextStyle(fontWeight: FontWeight.bold),),
         centerTitle: true,
         backgroundColor: const Color(0xFFBFD9FB),
         elevation: 0,
