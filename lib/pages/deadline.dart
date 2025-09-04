@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../widgets/nav.dart';
 
 /// ===== 数据结构 =====
@@ -35,6 +36,9 @@ class _DeadlineState extends State<Deadline> {
 
   // 内存任务列表
   final List<TaskItem> _items = <TaskItem>[];
+
+  // 短日期显示（例如 4/9/2025）
+  final DateFormat _dFmt = DateFormat('M/d/yyyy');
 
   /// 类型 → 标签
   String _labelOf(TaskType? t) {
@@ -107,9 +111,8 @@ class _DeadlineState extends State<Deadline> {
   }
 
   List<TaskItem> get _visibleItems {
-    final list = _items
-        .where((e) => _filter == null ? true : e.type == _filter)
-        .toList();
+    final list =
+    _items.where((e) => _filter == null ? true : e.type == _filter).toList();
     list.sort((a, b) => a.dateTime.compareTo(b.dateTime));
     return list;
   }
@@ -176,41 +179,62 @@ class _DeadlineState extends State<Deadline> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Row(
+
+                    // ⭐ 这里用 Wrap 自动换行 + 控件瘦身，避免 overflow
+                    Wrap(
+                      spacing: 8,          // 同行元素间隔
+                      runSpacing: 8,       // 换行后的行距
+                      crossAxisAlignment: WrapCrossAlignment.center,
                       children: [
-                        // 类型选择
+                        // 类型选择：紧凑
                         DropdownButton<TaskType>(
                           value: _selectedType,
+                          isDense: true,
                           underline: const SizedBox(),
-                          items: TaskType.values
-                              .map((t) => DropdownMenuItem<TaskType>(
-                            value: t,
-                            child: Text(_labelOf(t)),
-                          ))
-                              .toList(),
+                          items: TaskType.values.map((t) {
+                            return DropdownMenuItem<TaskType>(
+                              value: t,
+                              child: Text(_labelOf(t)),
+                            );
+                          }).toList(),
                           onChanged: (t) =>
                               setState(() => _selectedType = t ?? TaskType.other),
                         ),
-                        const SizedBox(width: 8),
-                        // 日期
+
+                        // 日期：紧凑 + 短文本
                         TextButton.icon(
                           onPressed: _pickDate,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            minimumSize: const Size(0, 36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                           icon: const Icon(Icons.calendar_today_outlined, size: 16),
-                          label: Text(
-                              '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}'),
+                          label: Text(_dFmt.format(_selectedDate)),
                         ),
-                        const SizedBox(width: 4),
-                        // 时间
+
+                        // 时间：紧凑
                         TextButton.icon(
                           onPressed: _pickTime,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            minimumSize: const Size(0, 36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                           icon: const Icon(Icons.schedule, size: 16),
                           label: Text(_selectedTime.format(context)),
                         ),
-                        const Spacer(),
+
+                        // Add 按钮：紧凑
                         ElevatedButton(
                           onPressed: _addTask,
                           style: ElevatedButton.styleFrom(
                             elevation: 0,
+                            minimumSize: const Size(64, 36),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -260,10 +284,9 @@ class _DeadlineState extends State<Deadline> {
                     itemCount: _visibleItems.length,
                     itemBuilder: (context, i) {
                       final t = _visibleItems[i];
-                      final time =
-                      TimeOfDay.fromDateTime(t.dateTime).format(context);
+                      final time = TimeOfDay.fromDateTime(t.dateTime)
+                          .format(context);
                       return ListTile(
-                        // 直接用彩色文字表示类型
                         leading: Text(
                           _labelOf(t.type),
                           style: TextStyle(
@@ -272,7 +295,9 @@ class _DeadlineState extends State<Deadline> {
                           ),
                         ),
                         title: Text(t.title),
-                        subtitle: Text(time),
+                        subtitle: Text(
+                          '${_dFmt.format(t.dateTime)}  ·  $time',
+                        ),
                       );
                     },
                   ),
@@ -283,7 +308,7 @@ class _DeadlineState extends State<Deadline> {
         ),
       ),
 
-      // ===== 底部导航（和 Diary 一样） =====
+      // ===== 底部导航 =====
       bottomNavigationBar: const Nav(),
     );
   }
