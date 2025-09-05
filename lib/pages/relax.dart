@@ -263,6 +263,10 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                             width: 160,
                             height: 160,
                             fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) => const Icon(
+                              Icons.pets,
+                              size: 120,
+                            ),
                           ),
                         ),
                       ],
@@ -308,7 +312,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
             ],
           ),
 
-          // Fortune 文案（放在气球卡片之上，避免遮挡）
+          // Fortune 文案
           if (_fortuneText != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -318,7 +322,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withOpacity(0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -368,7 +372,14 @@ class _SquareCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(iconPath, width: 60, height: 60, fit: BoxFit.contain),
+              Image.asset(
+                iconPath,
+                width: 60,
+                height: 60,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) =>
+                const Icon(Icons.wb_sunny_outlined, size: 48),
+              ),
               const SizedBox(height: 12),
               Text(
                 title,
@@ -428,8 +439,8 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
       } else {
         _soundAnimationController.repeat();
         await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+        // ✅ 正确：本地 assets 音频
         await _audioPlayer.play(AssetSource('sounds/bundleOfJoy.mp3'));
-
       }
       setState(() => isPlaying = !isPlaying);
     } catch (e) {
@@ -496,6 +507,8 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
                     width: 60,
                     height: 60,
                     fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.headset, size: 48),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -760,7 +773,7 @@ class _BalloonSprite extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: .12),
+                      color: Colors.black.withOpacity(.12),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -774,7 +787,7 @@ class _BalloonSprite extends StatelessWidget {
                   width: 10,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .55),
+                    color: Colors.white.withOpacity(.55),
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),
