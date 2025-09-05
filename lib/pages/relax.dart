@@ -37,31 +37,35 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     );
 
     // 0.88 -> 1.22 (吸) -> 1.22(停) -> 0.88(呼) -> 0.88(停)
-    _breath = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.88, end: 1.22)
-            .chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
-        weight: _inhaleMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.22),
-        weight: _holdTopMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.22, end: 0.88)
-            .chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
-        weight: _exhaleMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(0.88),
-        weight: _holdBottomMs.toDouble(),
-      ),
-    ]).animate(_breathCtrl)
-      ..addStatusListener((s) {
-        if (s == AnimationStatus.completed) {
-          _breathCtrl.forward(from: 0); // 循环
-        }
-      });
+    _breath =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 0.88,
+              end: 1.22,
+            ).chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
+            weight: _inhaleMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(1.22),
+            weight: _holdTopMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 1.22,
+              end: 0.88,
+            ).chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
+            weight: _exhaleMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(0.88),
+            weight: _holdBottomMs.toDouble(),
+          ),
+        ]).animate(_breathCtrl)..addStatusListener((s) {
+          if (s == AnimationStatus.completed) {
+            _breathCtrl.forward(from: 0); // 循环
+          }
+        });
   }
 
   void _toggleBreathing() {
@@ -237,8 +241,10 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                     final scale = _breath.value;
                     final haloScale = 1.0 + (scale - 1.0) * 0.25;
                     final haloOpacity =
-                    (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20)
-                        .clamp(0.25, 0.45);
+                        (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20).clamp(
+                          0.25,
+                          0.45,
+                        );
                     return Stack(
                       alignment: Alignment.center,
                       children: [
@@ -263,10 +269,8 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                             width: 160,
                             height: 160,
                             fit: BoxFit.contain,
-                            errorBuilder: (_, __, ___) => const Icon(
-                              Icons.pets,
-                              size: 120,
-                            ),
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.pets, size: 120),
                           ),
                         ),
                       ],
@@ -378,7 +382,7 @@ class _SquareCard extends StatelessWidget {
                 height: 60,
                 fit: BoxFit.contain,
                 errorBuilder: (_, __, ___) =>
-                const Icon(Icons.wb_sunny_outlined, size: 48),
+                    const Icon(Icons.wb_sunny_outlined, size: 48),
               ),
               const SizedBox(height: 12),
               Text(
@@ -419,9 +423,12 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
   @override
   void initState() {
     super.initState();
-    _soundAnimationController =
-        AnimationController(vsync: this, duration: const Duration(seconds: 2));
+    _soundAnimationController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 2),
+    );
     _audioPlayer = AudioPlayer();
+    _audioPlayer.audioCache = AudioCache(prefix: '');
   }
 
   @override
@@ -444,9 +451,9 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
       }
       setState(() => isPlaying = !isPlaying);
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to play audio: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to play audio: $e')));
     }
   }
 
@@ -477,7 +484,7 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
                         children: List.generate(3, (index) {
                           final progress =
                               (_soundAnimationController.value + index / 3) %
-                                  1.0;
+                              1.0;
                           final size = 40 + (progress * 60);
                           final opacity = (1 - progress).clamp(0.0, 1.0);
                           return Opacity(
@@ -508,7 +515,7 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
                     height: 60,
                     fit: BoxFit.contain,
                     errorBuilder: (_, __, ___) =>
-                    const Icon(Icons.headset, size: 48),
+                        const Icon(Icons.headset, size: 48),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -581,14 +588,15 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
   // 计算“卡片底部 → 小熊顶部”的距离，得到上升像素
   void _computeRise() {
     final bearBox =
-    widget.bearKey.currentContext?.findRenderObject() as RenderBox?;
+        widget.bearKey.currentContext?.findRenderObject() as RenderBox?;
     final originBox =
-    _originKey.currentContext?.findRenderObject() as RenderBox?;
+        _originKey.currentContext?.findRenderObject() as RenderBox?;
     if (bearBox == null || originBox == null) return;
 
     final bearTop = bearBox.localToGlobal(Offset.zero).dy + 6; // 稍微留白
-    final originBottom =
-        originBox.localToGlobal(Offset(0, originBox.size.height)).dy;
+    final originBottom = originBox
+        .localToGlobal(Offset(0, originBox.size.height))
+        .dy;
 
     setState(() => _risePx = (bearTop - originBottom) - 14); // 再上移一点
   }
@@ -631,88 +639,88 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                   child: _stage == _BalloonStage.button
                       ? const SizedBox.shrink()
                       : AnimatedBuilder(
-                    animation: _t,
-                    builder: (_, __) {
-                      final t = _stage == _BalloonStage.flying
-                          ? _t.value
-                          : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
+                          animation: _t,
+                          builder: (_, __) {
+                            final t = _stage == _BalloonStage.flying
+                                ? _t.value
+                                : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
 
-                      // 上升位移 & 左右散开
-                      double y(double base) => _risePx * t * base;
-                      double spread(double maxDx) {
-                        final s = Curves.easeInOut
-                            .transform((t - 0.1).clamp(0, 1));
-                        return maxDx * s;
-                      }
+                            // 上升位移 & 左右散开
+                            double y(double base) => _risePx * t * base;
+                            double spread(double maxDx) {
+                              final s = Curves.easeInOut.transform(
+                                (t - 0.1).clamp(0, 1),
+                              );
+                              return maxDx * s;
+                            }
 
-                      // 靠近顶部时逐步淡出 + 轻微缩小
-                      const fadeStart = 0.75; // 75% 进度开始淡出
-                      final fadeT =
-                      ((t - fadeStart) / (1 - fadeStart))
-                          .clamp(0.0, 1.0);
-                      final opacity = (_stage == _BalloonStage.docked)
-                          ? 0.0 // 停靠后完全透明
-                          : (1.0 - fadeT);
-                      final scale = 1.0 - 0.08 * fadeT;
+                            // 靠近顶部时逐步淡出 + 轻微缩小
+                            const fadeStart = 0.75; // 75% 进度开始淡出
+                            final fadeT = ((t - fadeStart) / (1 - fadeStart))
+                                .clamp(0.0, 1.0);
+                            final opacity = (_stage == _BalloonStage.docked)
+                                ? 0.0 // 停靠后完全透明
+                                : (1.0 - fadeT);
+                            final scale = 1.0 - 0.08 * fadeT;
 
-                      Widget fading(Widget child) => Opacity(
-                        opacity: opacity,
-                        child: Transform.scale(
-                          scale: scale,
-                          child: child,
+                            Widget fading(Widget child) => Opacity(
+                              opacity: opacity,
+                              child: Transform.scale(
+                                scale: scale,
+                                child: child,
+                              ),
+                            );
+
+                            return Stack(
+                              alignment: Alignment.bottomCenter,
+                              children: [
+                                fading(
+                                  _BalloonSprite(
+                                    dx: -spread(60),
+                                    dy: y(1.00),
+                                    colors: const [
+                                      Color(0xFFFF9FB9),
+                                      Color(0xFFFFC8D8),
+                                    ],
+                                    stringBend: -18,
+                                  ),
+                                ),
+                                fading(
+                                  _BalloonSprite(
+                                    dx: 0,
+                                    dy: y(1.05),
+                                    colors: const [
+                                      Color(0xFFB7D7F8),
+                                      Color(0xFFD8E9FF),
+                                    ],
+                                    stringBend: 0,
+                                  ),
+                                ),
+                                fading(
+                                  _BalloonSprite(
+                                    dx: spread(60),
+                                    dy: y(0.95),
+                                    colors: const [
+                                      Color(0xFFFFEB99),
+                                      Color(0xFFFFF5C7),
+                                    ],
+                                    stringBend: 18,
+                                  ),
+                                ),
+                              ],
+                            );
+                          },
                         ),
-                      );
-
-                      return Stack(
-                        alignment: Alignment.bottomCenter,
-                        children: [
-                          fading(
-                            _BalloonSprite(
-                              dx: -spread(60),
-                              dy: y(1.00),
-                              colors: const [
-                                Color(0xFFFF9FB9),
-                                Color(0xFFFFC8D8),
-                              ],
-                              stringBend: -18,
-                            ),
-                          ),
-                          fading(
-                            _BalloonSprite(
-                              dx: 0,
-                              dy: y(1.05),
-                              colors: const [
-                                Color(0xFFB7D7F8),
-                                Color(0xFFD8E9FF),
-                              ],
-                              stringBend: 0,
-                            ),
-                          ),
-                          fading(
-                            _BalloonSprite(
-                              dx: spread(60),
-                              dy: y(0.95),
-                              colors: const [
-                                Color(0xFFFFEB99),
-                                Color(0xFFFFF5C7),
-                              ],
-                              stringBend: 18,
-                            ),
-                          ),
-                        ],
-                      );
-                    },
-                  ),
                 ),
                 const SizedBox(height: 6),
                 Text(
                   _stage == _BalloonStage.button
                       ? "Tap to show the balloons"
                       : (_stage == _BalloonStage.ready
-                      ? "Tap again to let them fly"
-                      : (_stage == _BalloonStage.flying
-                      ? "Flying…"
-                      : "Balloons docked – tap to reset")),
+                            ? "Tap again to let them fly"
+                            : (_stage == _BalloonStage.flying
+                                  ? "Flying…"
+                                  : "Balloons docked – tap to reset")),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
