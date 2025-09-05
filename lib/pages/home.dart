@@ -24,28 +24,34 @@ class Home extends StatelessWidget {
           const SizedBox(height: 40),
 
           // ==== 顶部问候 ====
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            children: [
-              Image.asset("images/Sun.png", width: 70, height: 70),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    "Hi, $username 👋",   // ✅ 显示真实用户名
-                    style: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Image.asset("images/Sun.png", width: 70, height: 70),
+                const SizedBox(width: 16),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        "Hi, $username 👋", // ✅ 显示真实用户名
+                        style: const TextStyle(
+                          fontSize: 20,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const Text(
+                        "How are you today?",
+                        style: TextStyle(fontSize: 16),
+                      ),
+                    ],
                   ),
-                  const Text(
-                    "How are you today?",
-                    style: TextStyle(fontSize: 16),
-                  ),
-                ],
-              ),
-            ],
+                ),
+              ],
+            ),
           ),
 
           const SizedBox(height: 32),
@@ -83,7 +89,7 @@ class Home extends StatelessWidget {
             iconPath: 'images/Tree.png',
             title: 'Tree hole',
             subtitle:
-            'The place like childhood where you can write the things you want',
+                'The place like childhood where you can write the things you want',
             onTap: () {
               Navigator.push(
                 context,
@@ -129,9 +135,13 @@ class _HomeCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(title,
-                        style: const TextStyle(
-                            fontSize: 16, fontWeight: FontWeight.bold)),
+                    Text(
+                      title,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
                     const SizedBox(height: 4),
                     Text(subtitle, style: const TextStyle(fontSize: 14)),
                   ],
