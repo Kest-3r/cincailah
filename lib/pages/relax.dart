@@ -45,58 +45,120 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     );
 
     // 0.88 -> 1.22 (inhale) -> 1.22(hold) -> 0.88(exhale) -> 0.88(hold)
-    _breath = TweenSequence<double>([
-      TweenSequenceItem(
-        tween: Tween(begin: 0.88, end: 1.22)
-            .chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
-        weight: _inhaleMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(1.22),
-        weight: _holdTopMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: Tween(begin: 1.22, end: 0.88)
-            .chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
-        weight: _exhaleMs.toDouble(),
-      ),
-      TweenSequenceItem(
-        tween: ConstantTween<double>(0.88),
-        weight: _holdBottomMs.toDouble(),
-      ),
-    ]).animate(_breathCtrl)
-      ..addStatusListener((s) {
-        if (s == AnimationStatus.completed) {
-          _breathCtrl.forward(from: 0); // loop
-        }
-      });
+    _breath =
+        TweenSequence<double>([
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 0.88,
+              end: 1.22,
+            ).chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
+            weight: _inhaleMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(1.22),
+            weight: _holdTopMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: Tween(
+              begin: 1.22,
+              end: 0.88,
+            ).chain(CurveTween(curve: Curves.easeInOutCubicEmphasized)),
+            weight: _exhaleMs.toDouble(),
+          ),
+          TweenSequenceItem(
+            tween: ConstantTween<double>(0.88),
+            weight: _holdBottomMs.toDouble(),
+          ),
+        ]).animate(_breathCtrl)..addStatusListener((s) {
+          if (s == AnimationStatus.completed) {
+            _breathCtrl.forward(from: 0); // loop
+          }
+        });
   }
 
   Future<void> _ensureMedPlayer() async {
     if (_medPlayer != null) return;
-    final session = await AudioSession.instance;
-    await session.configure(const AudioSessionConfiguration.music());
 
-    final p = AudioPlayer();
-    await p.setLoopMode(LoopMode.one);
-    await p.setAudioSource(AudioSource.asset('audio/song/bundleOfJoy.mp3'));
-    await p.setVolume(0.7);
-    _medPlayer = p;
+    try {
+      final session = await AudioSession.instance;
+      await session.configure(const AudioSessionConfiguration.music());
+      await session.setActive(true);
 
-    // Keep UI in sync if playback changes outside your button
-    _medPlayer!.playingStream.listen((isPlaying) {
-      if (mounted) setState(() => _medPlaying = isPlaying);
-    });
+      final p = AudioPlayer();
+
+      // Route to media stream/speaker on Android
+      await p.setAndroidAudioAttributes(
+        const AndroidAudioAttributes(
+          contentType: AndroidAudioContentType.music,
+          usage: AndroidAudioUsage.media,
+          flags: AndroidAudioFlags.none,
+        ),
+      );
+
+      await p.setLoopMode(LoopMode.one);
+      // IMPORTANT: must match pubspec key exactly
+      await p.setAsset('audio/song/bundleOfJoy.mp3');
+      await p.setVolume(0.7);
+
+      // Keep UI in sync with actual player state
+      p.playerStateStream.listen(
+        (state) {
+          final isPlaying = state.playing;
+          if (mounted) setState(() => _medPlaying = isPlaying);
+        },
+        onError: (e, st) {
+          debugPrint('playerStateStream error: $e\n$st');
+        },
+      );
+
+      // Also log playback errors
+      p.playbackEventStream.listen(
+        (event) {},
+        onError: (e, st) {
+          debugPrint('Playback error: $e\n$st');
+          if (mounted) {
+            ScaffoldMessenger.of(
+              context,
+            ).showSnackBar(SnackBar(content: Text('Audio error: $e')));
+          }
+        },
+      );
+
+      _medPlayer = p;
+    } catch (e, st) {
+      debugPrint('ensureMedPlayer failed: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not load meditation audio: $e')),
+        );
+      }
+      rethrow; // so toggle won’t proceed
+    }
   }
 
   Future<void> _toggleMeditation() async {
-    await _ensureMedPlayer();
-    if (_medPlaying) {
-      setState(() => _medPlaying = false); // update label immediately
-      _medPlayer!.stop(); // don't await
-    } else {
-      setState(() => _medPlaying = true); // update label immediately
-      _medPlayer!.play(); // don't await
+    try {
+      await _ensureMedPlayer();
+    } catch (_) {
+      // already showed a snackbar in _ensureMedPlayer
+      return;
+    }
+
+    try {
+      if (_medPlayer!.playing) {
+        await _medPlayer!.stop();
+        if (mounted) setState(() => _medPlaying = false);
+      } else {
+        await _medPlayer!.play();
+        if (mounted) setState(() => _medPlaying = true);
+      }
+    } catch (e, st) {
+      debugPrint('toggle play/stop failed: $e\n$st');
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Playback failed: $e')));
+      }
     }
   }
 
@@ -278,8 +340,10 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                     final scale = _breath.value;
                     final haloScale = 1.0 + (scale - 1.0) * 0.25;
                     final haloOpacity =
-                        (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20)
-                            .clamp(0.25, 0.45);
+                        (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20).clamp(
+                          0.25,
+                          0.45,
+                        );
 
                     return Stack(
                       alignment: Alignment.center,
@@ -524,8 +588,9 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
     if (bearBox == null || originBox == null) return;
 
     final bearTop = bearBox.localToGlobal(Offset.zero).dy + 6; // small margin
-    final originBottom =
-        originBox.localToGlobal(Offset(0, originBox.size.height)).dy;
+    final originBottom = originBox
+        .localToGlobal(Offset(0, originBox.size.height))
+        .dy;
 
     // Positive conceptual rise; translate will apply negative Y to move up.
     final computed = (originBottom - bearTop) + 29;
@@ -534,7 +599,9 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
 
   void _onTap() {
     if (_stage == _BalloonStage.button) {
-      setState(() => _stage = _BalloonStage.ready); // first: show still balloons
+      setState(
+        () => _stage = _BalloonStage.ready,
+      ); // first: show still balloons
     } else if (_stage == _BalloonStage.ready) {
       _computeRise();
       setState(() => _stage = _BalloonStage.flying); // second: fly
@@ -595,12 +662,12 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                             final scale = 1.0 - 0.08 * fadeT;
 
                             Widget fading(Widget child) => Opacity(
-                                  opacity: opacity,
-                                  child: Transform.scale(
-                                    scale: scale,
-                                    child: child,
-                                  ),
-                                );
+                              opacity: opacity,
+                              child: Transform.scale(
+                                scale: scale,
+                                child: child,
+                              ),
+                            );
 
                             return Stack(
                               alignment: Alignment.bottomCenter,
@@ -651,10 +718,10 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                   _stage == _BalloonStage.button
                       ? "Tap to show the balloons"
                       : (_stage == _BalloonStage.ready
-                          ? "Tap again to let them fly"
-                          : (_stage == _BalloonStage.flying
-                              ? "Flying…"
-                              : "Balloons docked – tap to reset")),
+                            ? "Tap again to let them fly"
+                            : (_stage == _BalloonStage.flying
+                                  ? "Flying…"
+                                  : "Balloons docked – tap to reset")),
                   textAlign: TextAlign.center,
                   style: const TextStyle(
                     fontSize: 16,
