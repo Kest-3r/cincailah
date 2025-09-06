@@ -2,6 +2,13 @@
 
 ## Project Title
 Eleanor – A mobile application designed for university students to improve mental health, mindfulness, and productivity in daily life.
+## 🌸 Why "Eleanor"?
+
+The name **Eleanor** originates from Old French and Greek roots, meaning **“light” or “bright one.”**  
+We chose this name because it reflects the vision of our app:  
+Eleanor is designed to be a **light of guidance and support** in students’ lives,  
+helping them navigate stress, deadlines, and emotions with positivity, balance, and hope.
+
 
 ---
 
