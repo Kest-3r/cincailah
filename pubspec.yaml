@@ -41,6 +41,7 @@ dependencies:
   shared_preferences: ^2.3.3 # ← use a real version (or run `flutter pub add shared_preferences`)
   just_audio: ^0.10.5
   audio_session: ^0.2.2
+  image_picker: ^1.1.2
   
 dev_dependencies:
   flutter_test:
@@ -53,4 +54,4 @@ flutter:
   uses-material-design: true
   assets:
     - images/
-    - sounds/
+    - audio/

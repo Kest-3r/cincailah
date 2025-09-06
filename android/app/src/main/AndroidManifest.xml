@@ -39,6 +39,9 @@
             android:value="2" />
     </application>
 
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"
+        android:maxSdkVersion="32"/>
+
     <!-- For PROCESS_TEXT intents used by some text plugins -->
     <queries>
         <intent>

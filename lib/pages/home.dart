@@ -4,13 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/nav.dart';
 import '../pages/deadline.dart';
 import '../pages/treehole.dart';
-import '../pages/sign_up.dart';
-import '../pages/login.dart';
-import '../pages/welcome.dart';
 import '../pages/ai_companion.dart';
-import 'ai.dart';
-import 'deadline.dart';
-import 'treehole.dart';
 
 class Home extends StatelessWidget {
   const Home({super.key});

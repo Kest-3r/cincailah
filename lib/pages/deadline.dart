@@ -1,5 +1,10 @@
+// lib/pages/deadline.dart
+import 'dart:convert';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../widgets/nav.dart';
 
 /// ===== 动态 Tag 定义 =====
@@ -10,16 +15,87 @@ class TagDef {
   TagDef({required this.name, required this.icon, required this.color});
 }
 
-/// ===== 任务（保存 tag 名称）=====
-class TaskItem {
+/// ===== 新的数据结构：可本地存储 =====
+/// - id: 唯一键（本地使用）
+/// - title/dateTime/tag: 任务信息
+/// - done: 是否完成
+/// - createdAt: 本地创建时间（排序/调试方便）
+class TaskModel {
+  final String id;
   final String title;
   final DateTime dateTime;
-  final String tag; // 与 TagDef.name 对应
-  TaskItem({
+  final String tag;
+  final bool done;
+  final DateTime createdAt;
+
+  TaskModel({
+    required this.id,
     required this.title,
     required this.dateTime,
     required this.tag,
-  });
+    this.done = false,
+    DateTime? createdAt,
+  }) : createdAt = createdAt ?? DateTime.now();
+
+  TaskModel copyWith({
+    String? id,
+    String? title,
+    DateTime? dateTime,
+    String? tag,
+    bool? done,
+    DateTime? createdAt,
+  }) {
+    return TaskModel(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      dateTime: dateTime ?? this.dateTime,
+      tag: tag ?? this.tag,
+      done: done ?? this.done,
+      createdAt: createdAt ?? this.createdAt,
+    );
+    }
+
+  Map<String, dynamic> toMap() => {
+        'id': id,
+        'title': title,
+        'dateTime': dateTime.toIso8601String(),
+        'tag': tag,
+        'done': done,
+        'createdAt': createdAt.toIso8601String(),
+      };
+
+  factory TaskModel.fromMap(Map<String, dynamic> map) {
+    return TaskModel(
+      id: map['id'] as String,
+      title: map['title'] as String,
+      dateTime: DateTime.parse(map['dateTime'] as String),
+      tag: map['tag'] as String,
+      done: map['done'] as bool? ?? false,
+      createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
+    );
+  }
+}
+
+/// ===== 本地存储仓库（SharedPreferences）=====
+/// 保存为一个 JSON 字符串数组
+class TaskRepo {
+  static const _k = 'deadline_tasks_v1';
+
+  Future<List<TaskModel>> load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final raw = prefs.getStringList(_k);
+    if (raw == null) return [];
+    return raw
+        .map((s) => jsonDecode(s) as Map<String, dynamic>)
+        .map(TaskModel.fromMap)
+        .toList();
+  }
+
+  Future<void> save(List<TaskModel> items) async {
+    final prefs = await SharedPreferences.getInstance();
+    final list = items.map((e) => jsonEncode(e.toMap())).toList();
+    await prefs.setStringList(_k, list);
+  }
 }
 
 class Deadline extends StatefulWidget {
@@ -29,6 +105,8 @@ class Deadline extends StatefulWidget {
 }
 
 class _DeadlineState extends State<Deadline> {
+  final _repo = TaskRepo();
+
   // 输入控件
   final TextEditingController _text = TextEditingController();
   DateTime _selectedDate = DateTime.now();
@@ -49,8 +127,25 @@ class _DeadlineState extends State<Deadline> {
     TagDef(name: 'Other',  icon: Icons.label_rounded,      color: Colors.purple),
   ];
 
-  // 任务
-  final List<TaskItem> _items = <TaskItem>[];
+  // 任务（使用可持久化的 TaskModel）
+  List<TaskModel> _items = <TaskModel>[];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLocal();
+  }
+
+  Future<void> _loadLocal() async {
+    final loaded = await _repo.load();
+    setState(() {
+      _items = loaded..sort((a, b) => a.dateTime.compareTo(b.dateTime));
+    });
+  }
+
+  Future<void> _persist() async {
+    await _repo.save(_items);
+  }
 
   TagDef _tagOf(String name) => _tags.firstWhere(
         (t) => t.name.toLowerCase() == name.toLowerCase(),
@@ -83,7 +178,9 @@ class _DeadlineState extends State<Deadline> {
     if (t != null) setState(() => _selectedTime = t);
   }
 
-  void _addTask() {
+  String _newId() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  Future<void> _addTask() async {
     final title = _text.text.trim();
     if (title.isEmpty) return;
 
@@ -96,14 +193,36 @@ class _DeadlineState extends State<Deadline> {
     );
 
     setState(() {
-      _items.add(TaskItem(title: title, dateTime: dt, tag: _selectedTag));
+      _items.add(TaskModel(
+        id: _newId(),
+        title: title,
+        dateTime: dt,
+        tag: _selectedTag,
+      ));
       _items.sort((a, b) => a.dateTime.compareTo(b.dateTime));
       _text.clear();
     });
+    await _persist();
+  }
+
+  Future<void> _toggleDone(TaskModel t) async {
+    setState(() {
+      _items = _items
+          .map((e) => e.id == t.id ? e.copyWith(done: !e.done) : e)
+          .toList();
+    });
+    await _persist();
+  }
+
+  Future<void> _deleteTask(TaskModel t) async {
+    setState(() {
+      _items.removeWhere((e) => e.id == t.id);
+    });
+    await _persist();
   }
 
   // 过滤 + 排序（近到远）
-  List<TaskItem> get _visibleItems {
+  List<TaskModel> get _visibleItems {
     final list = _items.where((e) {
       if (_filterTag == null || _filterTag == 'All') return true;
       return e.tag.toLowerCase() == _filterTag!.toLowerCase();
@@ -115,11 +234,12 @@ class _DeadlineState extends State<Deadline> {
   /// ===== 分组逻辑：同一天的任务归为一组 =====
   DateTime _dayKey(DateTime dt) => DateTime(dt.year, dt.month, dt.day);
 
-  String _formatDate(DateTime dt) => '${dt.day}/${dt.month}/${dt.year}'; // 11/3/2025
+  final _dateFmt = DateFormat('d/M/yyyy'); // e.g. 11/3/2025
+  String _formatDate(DateTime dt) => _dateFmt.format(dt);
 
   List<_Section> get _groupedVisible {
     final items = _visibleItems;
-    final Map<DateTime, List<TaskItem>> map = {};
+    final Map<DateTime, List<TaskModel>> map = {};
     for (final it in items) {
       final k = _dayKey(it.dateTime);
       map.putIfAbsent(k, () => []).add(it);
@@ -300,16 +420,12 @@ class _DeadlineState extends State<Deadline> {
                                 if (ok != true) return;
                                 setState(() {
                                   // 迁移任务到 Other
-                                  for (var i = 0; i < _items.length; i++) {
-                                    if (_items[i].tag.toLowerCase() ==
-                                        t.name.toLowerCase()) {
-                                      _items[i] = TaskItem(
-                                        title: _items[i].title,
-                                        dateTime: _items[i].dateTime,
-                                        tag: 'Other',
-                                      );
-                                    }
-                                  }
+                                  _items = _items
+                                      .map((e) => e.tag.toLowerCase() ==
+                                              t.name.toLowerCase()
+                                          ? e.copyWith(tag: 'Other')
+                                          : e)
+                                      .toList();
                                   _tags.removeWhere((x) => x.name == t.name);
                                   if (_selectedTag.toLowerCase() ==
                                       t.name.toLowerCase()) {
@@ -321,6 +437,7 @@ class _DeadlineState extends State<Deadline> {
                                   }
                                 });
                                 setSheetState(() {});
+                                _persist();
                               },
                       ),
                     );
@@ -413,7 +530,7 @@ class _DeadlineState extends State<Deadline> {
         title: const Column(
           children: [
             Text(
-              'Calendar Sync',
+              'Calendar',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.w800,
@@ -421,14 +538,6 @@ class _DeadlineState extends State<Deadline> {
               ),
             ),
             SizedBox(height: 2),
-            Text(
-              'Connected : Google Calendar',
-              style: TextStyle(
-                fontSize: 13,
-                color: Colors.black87,
-                decoration: TextDecoration.underline,
-              ),
-            ),
           ],
         ),
       ),
@@ -560,7 +669,7 @@ class _DeadlineState extends State<Deadline> {
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
-                    onPressed: _openFilterSheet, 
+                    onPressed: _openFilterSheet,
                   ),
                 ],
               ),
@@ -601,17 +710,72 @@ class _DeadlineState extends State<Deadline> {
                                   ...section.items.map((t) {
                                     final tag = _tagOf(t.tag);
                                     final time = TimeOfDay.fromDateTime(t.dateTime).format(context);
-                                    return ListTile(
-                                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                                      leading: CircleAvatar(
-                                        radius: 18,
-                                        backgroundColor: tag.color.withOpacity(.12),
-                                        child: Icon(tag.icon, color: tag.color),
+                                    final style = t.done
+                                        ? const TextStyle(
+                                            decoration: TextDecoration.lineThrough,
+                                            color: Colors.black54,
+                                          )
+                                        : const TextStyle();
+
+                                    return Dismissible(
+                                      key: ValueKey(t.id),
+                                      background: Container(
+                                        alignment: Alignment.centerLeft,
+                                        padding: const EdgeInsets.only(left: 20),
+                                        color: Colors.green.withOpacity(.2),
+                                        child: const Icon(Icons.check, color: Colors.green),
                                       ),
-                                      title: Text(t.title),
-                                      subtitle: Text('$time  ·  #${tag.name}'),
-                                      dense: true,
-                                      visualDensity: VisualDensity.compact,
+                                      secondaryBackground: Container(
+                                        alignment: Alignment.centerRight,
+                                        padding: const EdgeInsets.only(right: 20),
+                                        color: Colors.red.withOpacity(.2),
+                                        child: const Icon(Icons.delete_outline, color: Colors.red),
+                                      ),
+                                      confirmDismiss: (dir) async {
+                                        if (dir == DismissDirection.startToEnd) {
+                                          // 左→右：切换完成状态
+                                          await _toggleDone(t);
+                                          return false; // 不真正移除
+                                        } else {
+                                          // 右→左：删除
+                                          final ok = await showDialog<bool>(
+                                            context: context,
+                                            builder: (_) => AlertDialog(
+                                              title: const Text('Delete task?'),
+                                              content: Text('Delete "${t.title}"?'),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed: () => Navigator.pop(context, false),
+                                                  child: const Text('Cancel'),
+                                                ),
+                                                FilledButton(
+                                                  onPressed: () => Navigator.pop(context, true),
+                                                  style: FilledButton.styleFrom(backgroundColor: Colors.red),
+                                                  child: const Text('Delete'),
+                                                ),
+                                              ],
+                                            ),
+                                          );
+                                          if (ok == true) {
+                                            await _deleteTask(t);
+                                            return true;
+                                          }
+                                          return false;
+                                        }
+                                      },
+                                      child: ListTile(
+                                        contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                                        leading: CircleAvatar(
+                                          radius: 18,
+                                          backgroundColor: tag.color.withOpacity(.12),
+                                          child: Icon(tag.icon, color: tag.color),
+                                        ),
+                                        title: Text(t.title, style: style),
+                                        subtitle: Text('$time  ·  #${tag.name}'),
+                                        dense: true,
+                                        visualDensity: VisualDensity.compact,
+                                        onTap: () => _toggleDone(t),
+                                      ),
                                     );
                                   }),
                                 ],
@@ -640,6 +804,6 @@ class _DeadlineState extends State<Deadline> {
 /// 分组模型
 class _Section {
   final DateTime date;
-  final List<TaskItem> items;
+  final List<TaskModel> items;
   _Section({required this.date, required this.items});
 }

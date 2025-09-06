@@ -1,8 +1,14 @@
 // lib/pages/profile.dart
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:image_picker/image_picker.dart';
+import 'package:url_launcher/url_launcher.dart';
+
 import '../widgets/nav.dart';
+import 'focus_mode.dart'; // Ensure this exists (FocusModeSetupPage)
 
 class Profile extends StatefulWidget {
   const Profile({super.key});
@@ -11,14 +17,21 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
+  // --- Local pref keys ---
+  static const _kBio = 'profile_bio';
+  static const _kDailyReminder = 'profile_daily_reminder';
+  static const _kPhotoPath = 'profile_photo_path';
+
   final _bioCtrl = TextEditingController();
   bool _dailyReminder = false;
-  bool _relaxSounds = true;
 
   // Demo stats (replace with real data later)
   int _entries = 12;
   int _relaxMin = 47;
   int _streak = 5;
+
+  // Locally picked avatar (highest priority for display)
+  String? _photoPath;
 
   User? get _user => FirebaseAuth.instance.currentUser;
 
@@ -37,19 +50,22 @@ class _ProfileState extends State<Profile> {
   Future<void> _loadPrefs() async {
     final p = await SharedPreferences.getInstance();
     setState(() {
-      _bioCtrl.text = p.getString('profile_bio') ?? '';
-      _dailyReminder = p.getBool('profile_daily_reminder') ?? false;
-      _relaxSounds = p.getBool('profile_relax_sounds') ?? true;
+      _bioCtrl.text = p.getString(_kBio) ?? '';
+      _dailyReminder = p.getBool(_kDailyReminder) ?? false;
+      _photoPath = p.getString(_kPhotoPath);
     });
   }
 
   Future<void> _savePrefs() async {
     final p = await SharedPreferences.getInstance();
-    await p.setString('profile_bio', _bioCtrl.text.trim());
-    await p.setBool('profile_daily_reminder', _dailyReminder);
-    await p.setBool('profile_relax_sounds', _relaxSounds);
+    await p.setString(_kBio, _bioCtrl.text.trim());
+    await p.setBool(_kDailyReminder, _dailyReminder);
+    if (_photoPath != null) {
+      await p.setString(_kPhotoPath, _photoPath!);
+    }
   }
 
+  // ====== Edit name (same as your current flow) ======
   Future<void> _editName() async {
     final nameCtrl = TextEditingController(text: _user?.displayName ?? '');
     final newName = await showDialog<String>(
@@ -80,6 +96,87 @@ class _ProfileState extends State<Profile> {
     }
   }
 
+  // ====== Edit photo (same “tap edit” pattern) ======
+  Future<void> _editPhoto() async {
+    final choice = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_library),
+              title: const Text('Choose from gallery'),
+              onTap: () => Navigator.pop(context, 'gallery'),
+            ),
+            if (_photoPath != null && _photoPath!.isNotEmpty)
+              ListTile(
+                leading: const Icon(Icons.delete_outline, color: Colors.red),
+                title: const Text('Remove photo', style: TextStyle(color: Colors.red)),
+                onTap: () => Navigator.pop(context, 'remove'),
+              ),
+            const SizedBox(height: 8),
+          ],
+        ),
+      ),
+    );
+
+    if (!mounted || choice == null) return;
+
+    if (choice == 'remove') {
+      setState(() => _photoPath = null);
+      await _savePrefs();
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo removed')));
+      return;
+    }
+
+    if (choice == 'gallery') {
+      try {
+        final picker = ImagePicker();
+        final res = await picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+        if (res == null) return;
+        setState(() => _photoPath = res.path);
+        await _savePrefs();
+
+        // Optional: If you later add Firebase Storage, upload & call _user?.updatePhotoURL(downloadUrl)
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Photo updated ✅')));
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed to pick image: $e')));
+      }
+    }
+  }
+
+  // ====== Focus Mode navigation ======
+  void _openFocusMode() {
+    Navigator.of(context).push(MaterialPageRoute(builder: (_) => const FocusModeSetupPage()));
+  }
+
+  // ====== WhatsApp Helper ======
+  Future<void> _openWhatsAppHelper() async {
+    // Talian Kasih 15999
+    final uriWeb = Uri.parse('https://wa.me/60192615999'); // +60 19-261 5999 (demo helper)
+    final uriScheme = Uri.parse('whatsapp://send?phone=+60192615999');
+    try {
+      if (await canLaunchUrl(uriScheme)) {
+        await launchUrl(uriScheme);
+      } else if (await canLaunchUrl(uriWeb)) {
+        await launchUrl(uriWeb, mode: LaunchMode.externalApplication);
+      } else {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp.')));
+      }
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Could not open WhatsApp: $e')));
+    }
+  }
+
   Future<void> _signOut() async {
     try {
       await FirebaseAuth.instance.signOut();
@@ -92,6 +189,18 @@ class _ProfileState extends State<Profile> {
     }
   }
 
+  ImageProvider? _avatarProvider() {
+    // Priority: local photoPath -> Firebase photoURL -> null
+    if (_photoPath != null && _photoPath!.isNotEmpty && File(_photoPath!).existsSync()) {
+      return FileImage(File(_photoPath!));
+    }
+    final url = _user?.photoURL;
+    if (url != null && url.isNotEmpty) {
+      return NetworkImage(url);
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     const pageBg = Color(0xFFBFD9FB);
@@ -99,6 +208,7 @@ class _ProfileState extends State<Profile> {
     const panelRadius = 24.0;
 
     final username = _user?.displayName ?? _user?.email?.split('@').first ?? 'User';
+    final avatarProvider = _avatarProvider();
 
     return Scaffold(
       backgroundColor: pageBg,
@@ -112,7 +222,7 @@ class _ProfileState extends State<Profile> {
               borderRadius: BorderRadius.circular(panelRadius),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
+                  color: Colors.black.withOpacity(0.06),
                   blurRadius: 12,
                   offset: const Offset(0, 6),
                 ),
@@ -127,15 +237,9 @@ class _ProfileState extends State<Profile> {
                   color: headerBg,
                   height: 64,
                   padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: Row(
+                  child: const Row(
                     children: [
-                      IconButton(
-                        splashRadius: 24,
-                        icon: const Icon(Icons.arrow_back, size: 22),
-                        onPressed: () => Navigator.of(context).maybePop(),
-                      ),
-                      const SizedBox(width: 6),
-                      const Expanded(
+                      Expanded(
                         child: Text(
                           'PROFILE',
                           textAlign: TextAlign.center,
@@ -146,11 +250,10 @@ class _ProfileState extends State<Profile> {
                           ),
                         ),
                       ),
-                      const SizedBox(width: 48),
                     ],
                   ),
                 ),
-                Container(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+                Container(height: 1, color: Colors.black.withOpacity(0.06)),
 
                 // ===== User card =====
                 Padding(
@@ -160,24 +263,45 @@ class _ProfileState extends State<Profile> {
                     decoration: BoxDecoration(
                       color: const Color(0xFFF7FAFF),
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                      border: Border.all(color: Colors.black.withOpacity(0.06)),
                     ),
                     child: Row(
                       children: [
-                        CircleAvatar(
-                          radius: 32,
-                          backgroundColor: const Color(0xFFE2EDFF),
-                          backgroundImage: _user?.photoURL != null ? NetworkImage(_user!.photoURL!) : null,
-                          child: _user?.photoURL == null
-                              ? Text(
-                            username.isNotEmpty ? username[0].toUpperCase() : '?',
-                            style: const TextStyle(
-                              fontSize: 28,
-                              fontWeight: FontWeight.w800,
-                              color: Color(0xFF5D6AA1),
+                        Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              radius: 32,
+                              backgroundColor: const Color(0xFFE2EDFF),
+                              backgroundImage: avatarProvider,
+                              child: avatarProvider == null
+                                  ? Text(
+                                      username.isNotEmpty ? username[0].toUpperCase() : '?',
+                                      style: const TextStyle(
+                                        fontSize: 28,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFF5D6AA1),
+                                      ),
+                                    )
+                                  : null,
                             ),
-                          )
-                              : null,
+                            Positioned(
+                              right: -2,
+                              bottom: -2,
+                              child: Material(
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(16),
+                                child: InkWell(
+                                  onTap: _editPhoto,
+                                  borderRadius: BorderRadius.circular(16),
+                                  child: const Padding(
+                                    padding: EdgeInsets.all(6),
+                                    child: Icon(Icons.camera_alt, size: 16, color: Colors.white),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(width: 14),
                         Expanded(
@@ -202,7 +326,7 @@ class _ProfileState extends State<Profile> {
                               ),
                               Text(
                                 _user?.email ?? 'Anonymous user',
-                                style: TextStyle(color: Colors.black.withValues(alpha: 0.6)),
+                                style: TextStyle(color: Colors.black.withOpacity(0.6)),
                               ),
                             ],
                           ),
@@ -216,12 +340,12 @@ class _ProfileState extends State<Profile> {
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                   child: Row(
-                    children: const [
-                      Expanded(child: _StatCard(label: 'Entries', value: '12', icon: Icons.book_outlined)),
-                      SizedBox(width: 10),
-                      Expanded(child: _StatCard(label: 'Relax (min)', value: '47', icon: Icons.self_improvement)),
-                      SizedBox(width: 10),
-                      Expanded(child: _StatCard(label: 'Streak', value: '5🔥', icon: Icons.local_fire_department_outlined)),
+                    children: [
+                      _StatCard(label: 'Entries', value: '$_entries', icon: Icons.book_outlined),
+                      const SizedBox(width: 10),
+                      _StatCard(label: 'Relax', value: '$_relaxMin', icon: Icons.self_improvement),
+                      const SizedBox(width: 10),
+                      _StatCard(label: 'Streak', value: '$_streak🔥', icon: Icons.local_fire_department_outlined),
                     ],
                   ),
                 ),
@@ -243,7 +367,7 @@ class _ProfileState extends State<Profile> {
                           fillColor: Colors.white,
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(14),
-                            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+                            borderSide: BorderSide(color: Colors.black.withOpacity(0.08)),
                           ),
                         ),
                         onChanged: (_) => _savePrefs(),
@@ -252,17 +376,18 @@ class _ProfileState extends State<Profile> {
                   ),
                 ),
 
-                // ===== Settings =====
+                // ===== Settings / Focus Mode / Helper =====
                 Padding(
                   padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
                   child: Container(
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(16),
-                      border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                      border: Border.all(color: Colors.black.withOpacity(0.06)),
                     ),
                     child: Column(
                       children: [
+                        // Daily reminder (kept)
                         SwitchListTile(
                           title: const Text('Daily reminder'),
                           subtitle: const Text('Get a gentle nudge to write or relax'),
@@ -273,14 +398,24 @@ class _ProfileState extends State<Profile> {
                           },
                         ),
                         const Divider(height: 0),
-                        SwitchListTile(
-                          title: const Text('Relax sounds'),
-                          subtitle: const Text('Play soothing sounds in Relax page'),
-                          value: _relaxSounds,
-                          onChanged: (v) {
-                            setState(() => _relaxSounds = v);
-                            _savePrefs();
-                          },
+
+                        // Focus Mode
+                        ListTile(
+                          leading: const Icon(Icons.timer),
+                          title: const Text('Focus Mode'),
+                          subtitle: const Text('Lock this app for a set time'),
+                          trailing: const Icon(Icons.chevron_right),
+                          onTap: _openFocusMode,
+                        ),
+                        const Divider(height: 0),
+
+                        // Mental Health Helper
+                        ListTile(
+                          leading: const Icon(Icons.health_and_safety),
+                          title: const Text('Mental Health Helper'),
+                          subtitle: const Text('Chat via WhatsApp (Talian Kasih 15999)'),
+                          trailing: const Icon(Icons.open_in_new),
+                          onTap: _openWhatsAppHelper,
                         ),
                       ],
                     ),
@@ -333,40 +468,42 @@ class _StatCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFF7FAFF),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
-      ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.center,
-        children: [
-          Icon(icon, size: 20, color: const Color(0xFF5D6AA1)),
-          const SizedBox(width: 8),
-          // Constrain the text area to prevent overflow
-          Expanded(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(fontSize: 12, color: Colors.black.withValues(alpha: 0.6)),
-                ),
-              ],
+    return Expanded(
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFFF7FAFF),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: Colors.black.withOpacity(0.06)),
+        ),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            Icon(icon, size: 20, color: const Color(0xFF5D6AA1)),
+            const SizedBox(width: 8),
+            // Constrain the text area to prevent overflow
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                  ),
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(fontSize: 12, color: Colors.black.withOpacity(0.6)),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
