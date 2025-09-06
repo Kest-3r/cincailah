@@ -39,7 +39,9 @@ dependencies:
   # env class for storing api keys
   envied: ^1.2.1
   shared_preferences: ^2.3.3 # ← use a real version (or run `flutter pub add shared_preferences`)
-
+  just_audio: ^0.10.5
+  audio_session: ^0.2.2
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
