@@ -21,7 +21,7 @@ class Welcome extends StatelessWidget {
                 children: <Widget>[
                   const Spacer(flex: 2),
                   const Text(
-                    'APP',
+                    'Eleanor',
                     style: TextStyle(
                       fontFamily: 'DancingScript',
                       fontSize: 48,
