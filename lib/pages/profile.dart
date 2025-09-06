@@ -1,63 +1,9 @@
-import 'dart:io';
+// lib/pages/profile.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:url_launcher/url_launcher.dart';
-import 'package:image_picker/image_picker.dart';
-
-// Your bottom nav
 import '../widgets/nav.dart';
 
-// External pages
-import 'settings_page.dart';
-import 'focus_mode.dart'; // FocusModeSetupPage lives here
-
-/// Local storage keys (username + photo)
-class _Keys {
-  static const username = 'profile_username';
-  static const photoPath = 'profile_photo_path';
-}
-
-/// ===== Simple mood models (demo) =====
-enum MoodRange { week, month, year }
-
-class MoodEntry {
-  final DateTime date;
-
-  /// Mood score: 1 (low) .. 5 (great)
-  final int score;
-  MoodEntry(this.date, this.score);
-}
-
-List<MoodEntry> _generateMood(MoodRange range) {
-  final now = DateTime.now();
-  final rnd = now.millisecondsSinceEpoch % 5;
-
-  switch (range) {
-    case MoodRange.week:
-      // 7 points (daily)
-      return List.generate(7, (i) {
-        final d = now.subtract(Duration(days: 6 - i));
-        final s = 2 + ((i + rnd) % 4); // 2..5
-        return MoodEntry(d, s);
-      });
-    case MoodRange.month:
-      // 30 days (sample every 2 days -> 15 pts)
-      return List.generate(15, (i) {
-        final d = now.subtract(Duration(days: 28 - i * 2));
-        final s = 1 + ((i + rnd) % 5); // 1..5
-        return MoodEntry(d, s);
-      });
-    case MoodRange.year:
-      // 12 months (mid-month)
-      return List.generate(12, (i) {
-        final d = DateTime(now.year, now.month - (11 - i), 15);
-        final s = 1 + ((i + rnd) % 5); // 1..5
-        return MoodEntry(d, s);
-      });
-  }
-}
-
-/// ===== Profile (root) =====
 class Profile extends StatefulWidget {
   const Profile({super.key});
   @override
@@ -65,543 +11,363 @@ class Profile extends StatefulWidget {
 }
 
 class _ProfileState extends State<Profile> {
-  String _username = 'Your Name';
-  String? _photoPath;
+  final _bioCtrl = TextEditingController();
+  bool _dailyReminder = false;
+  bool _relaxSounds = true;
 
-  MoodRange _range = MoodRange.week;
-  late List<MoodEntry> _moodData;
+  // Demo stats (replace with real data later)
+  int _entries = 12;
+  int _relaxMin = 47;
+  int _streak = 5;
+
+  User? get _user => FirebaseAuth.instance.currentUser;
 
   @override
   void initState() {
     super.initState();
-    _moodData = _generateMood(_range);
-    _loadProfile();
+    _loadPrefs();
   }
 
-  Future<void> _loadProfile() async {
-    final sp = await SharedPreferences.getInstance();
+  @override
+  void dispose() {
+    _bioCtrl.dispose();
+    super.dispose();
+  }
+
+  Future<void> _loadPrefs() async {
+    final p = await SharedPreferences.getInstance();
     setState(() {
-      _username = sp.getString(_Keys.username) ?? 'Your Name';
-      _photoPath = sp.getString(_Keys.photoPath);
+      _bioCtrl.text = p.getString('profile_bio') ?? '';
+      _dailyReminder = p.getBool('profile_daily_reminder') ?? false;
+      _relaxSounds = p.getBool('profile_relax_sounds') ?? true;
     });
   }
 
-  void _openSettings() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const SettingsPage()));
+  Future<void> _savePrefs() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setString('profile_bio', _bioCtrl.text.trim());
+    await p.setBool('profile_daily_reminder', _dailyReminder);
+    await p.setBool('profile_relax_sounds', _relaxSounds);
   }
 
-  void _openFocusMode() {
-    Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const FocusModeSetupPage()));
-  }
-
-  Future<void> _openWhatsAppHelper() async {
-    final uriWeb = Uri.parse('https://wa.me/60192615999'); // +60 19-261 5999
-    final uriScheme = Uri.parse('whatsapp://send?phone=+60192615999');
-    if (await canLaunchUrl(uriScheme)) {
-      await launchUrl(uriScheme);
-    } else if (await canLaunchUrl(uriWeb)) {
-      await launchUrl(uriWeb, mode: LaunchMode.externalApplication);
-    } else {
+  Future<void> _editName() async {
+    final nameCtrl = TextEditingController(text: _user?.displayName ?? '');
+    final newName = await showDialog<String>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Edit name'),
+        content: TextField(
+          controller: nameCtrl,
+          autofocus: true,
+          decoration: const InputDecoration(hintText: 'Your display name'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, nameCtrl.text.trim()), child: const Text('Save')),
+        ],
+      ),
+    );
+    if (newName == null || newName.isEmpty) return;
+    try {
+      await _user?.updateDisplayName(newName);
+      await _user?.reload();
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(const SnackBar(content: Text('Could not open WhatsApp.')));
+      setState(() {});
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Name updated ✅')));
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Failed: $e')));
     }
   }
 
-  void _openEditProfile() async {
-    await Navigator.of(
-      context,
-    ).push(MaterialPageRoute(builder: (_) => const EditProfilePage()));
-    _loadProfile(); // refresh after edit
-  }
-
-  void _onRangeChanged(MoodRange r) {
-    if (r == _range) return;
-    setState(() {
-      _range = r;
-      _moodData = _generateMood(_range);
-    });
-  }
-
-  String _labelForRange(MoodRange r) {
-    switch (r) {
-      case MoodRange.week:
-        return '7 days';
-      case MoodRange.month:
-        return '30 days';
-      case MoodRange.year:
-        return '12 months';
+  Future<void> _signOut() async {
+    try {
+      await FirebaseAuth.instance.signOut();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Signed out')));
+      Navigator.of(context).maybePop();
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Sign out failed: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final titleStyle = Theme.of(
-      context,
-    ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w600);
+    const pageBg = Color(0xFFBFD9FB);
+    const headerBg = Color(0xFFD7E8FF);
+    const panelRadius = 24.0;
+
+    final username = _user?.displayName ?? _user?.email?.split('@').first ?? 'User';
 
     return Scaffold(
-      backgroundColor: const Color(0xFFBFD9FB),
-      appBar: AppBar(
-        backgroundColor: const Color(0xFFBFD9FB),
-        title: const Text(
-          'Profile',
-          style: TextStyle(fontWeight: FontWeight.bold),
-        ),
-        automaticallyImplyLeading: false,
-        centerTitle: true,
-        actions: [
-          IconButton(
-            tooltip: 'Edit profile',
-            onPressed: _openEditProfile,
-            icon: const Icon(Icons.edit),
-          ),
-        ],
-      ),
+      backgroundColor: pageBg,
       bottomNavigationBar: const Nav(currentIndex: 3),
-
-      // OPTION A: keep ListView but disable scrolling
-      body: ListView(
-        padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-        physics: const NeverScrollableScrollPhysics(), // ⬅️ unscrollable
-        children: [
-          // Header
-          Center(
-            child: Column(
-              children: [
-                _Avatar(photoPath: _photoPath),
-                const SizedBox(height: 10),
-                FittedBox(
-                  fit: BoxFit.scaleDown,
-                  child: Text(_username, style: titleStyle),
+      body: SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(panelRadius),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.06),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
                 ),
               ],
             ),
-          ),
-          const SizedBox(height: 16),
-
-          // Mood trend with range chips ABOVE the graph
-          Card(
-            color: Colors.white,
-            elevation: 1,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        'Mood Trend',
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        '(${_labelForRange(_range)})',
-                        style: Theme.of(
-                          context,
-                        ).textTheme.bodySmall?.copyWith(color: Colors.grey),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
-
-                  // Chips row (moved above graph)
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _RangeChip(
-                        label: 'Week',
-                        selected: _range == MoodRange.week,
-                        onTap: () => _onRangeChanged(MoodRange.week),
-                      ),
-                      const SizedBox(width: 6),
-                      _RangeChip(
-                        label: 'Month',
-                        selected: _range == MoodRange.month,
-                        onTap: () => _onRangeChanged(MoodRange.month),
-                      ),
-                      const SizedBox(width: 6),
-                      _RangeChip(
-                        label: 'Year',
-                        selected: _range == MoodRange.year,
-                        onTap: () => _onRangeChanged(MoodRange.year),
-                      ),
-                    ],
-                  ),
-
-                  const SizedBox(height: 12),
-                  // Smaller graph
-                  SizedBox(height: 140, child: _MoodChart(data: _moodData)),
-                  const SizedBox(height: 6),
-                  const Text(
-                    'Scale: 1 (sad) → 5 (happy)',
-                    style: TextStyle(color: Colors.grey),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          const SizedBox(height: 4),
-
-          // Keep the three action tiles BELOW the card
-          // Settings tile
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 2,
-                ),
-                leading: const Icon(Icons.settings),
-                title: const Text('Settings'),
-                subtitle: const Text('Notifications & password'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _openSettings,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-
-          // Focus Mode tile
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 2,
-                ),
-                leading: const Icon(Icons.timer),
-                title: const Text('Focus Mode'),
-                subtitle: const Text('Lock this app for a set time'),
-                trailing: const Icon(Icons.chevron_right),
-                onTap: _openFocusMode,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-
-          // Mental Health Helper tile
-          Padding(
-            padding: const EdgeInsets.symmetric(vertical: 6),
-            child: Material(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              child: ListTile(
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 2,
-                ),
-                leading: const Icon(Icons.health_and_safety),
-                title: const Text('Mental Health Helper'),
-                subtitle: const Text('Chat via WhatsApp (Talian Kasih 15999)'),
-                trailing: const Icon(Icons.open_in_new),
-                onTap: _openWhatsAppHelper,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-/// ===== Edit Profile (username + photo) =====
-class EditProfilePage extends StatefulWidget {
-  const EditProfilePage({super.key});
-  @override
-  State<EditProfilePage> createState() => _EditProfilePageState();
-}
-
-class _EditProfilePageState extends State<EditProfilePage> {
-  final _nameCtrl = TextEditingController();
-  String? _photoPath;
-
-  @override
-  void initState() {
-    super.initState();
-    _initLoad();
-  }
-
-  Future<void> _initLoad() async {
-    final sp = await SharedPreferences.getInstance();
-    _nameCtrl.text = sp.getString(_Keys.username) ?? '';
-    _photoPath = sp.getString(_Keys.photoPath);
-    if (mounted) setState(() {});
-  }
-
-  Future<void> _pickPhoto() async {
-    final picker = ImagePicker();
-    final res = await picker.pickImage(
-      source: ImageSource.gallery,
-      imageQuality: 85,
-    );
-    if (res != null) {
-      _photoPath = res.path;
-      setState(() {});
-    }
-  }
-
-  Future<void> _save() async {
-    final sp = await SharedPreferences.getInstance();
-    final name = _nameCtrl.text.trim().isEmpty
-        ? 'Your Name'
-        : _nameCtrl.text.trim();
-    await sp.setString(_Keys.username, name);
-    if (_photoPath != null) {
-      await sp.setString(_Keys.photoPath, _photoPath!);
-    }
-    if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Profile updated')));
-    Navigator.of(context).pop();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    const radius = 44.0;
-
-    return Scaffold(
-      appBar: AppBar(title: const Text('Edit Profile')),
-      bottomNavigationBar: const Nav(currentIndex: 3),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Center(
-            child: Stack(
-              alignment: Alignment.bottomRight,
+            clipBehavior: Clip.antiAlias,
+            child: ListView(
+              padding: EdgeInsets.zero,
               children: [
-                (_photoPath != null &&
-                        _photoPath!.isNotEmpty &&
-                        File(_photoPath!).existsSync())
-                    ? CircleAvatar(
-                        radius: radius,
-                        backgroundImage: FileImage(File(_photoPath!)),
-                      )
-                    : const CircleAvatar(
-                        radius: radius,
-                        child: Icon(Icons.person, size: 44),
+                // ===== Header =====
+                Container(
+                  color: headerBg,
+                  height: 64,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Row(
+                    children: [
+                      IconButton(
+                        splashRadius: 24,
+                        icon: const Icon(Icons.arrow_back, size: 22),
+                        onPressed: () => Navigator.of(context).maybePop(),
                       ),
-                Positioned(
-                  bottom: 0,
-                  right: 0,
-                  child: InkWell(
-                    onTap: _pickPhoto,
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      padding: const EdgeInsets.all(6),
-                      decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.primary,
-                        borderRadius: BorderRadius.circular(20),
+                      const SizedBox(width: 6),
+                      const Expanded(
+                        child: Text(
+                          'PROFILE',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontWeight: FontWeight.w900,
+                            letterSpacing: 1.2,
+                          ),
+                        ),
                       ),
-                      child: const Icon(
-                        Icons.camera_alt,
-                        size: 18,
-                        color: Colors.white,
-                      ),
+                      const SizedBox(width: 48),
+                    ],
+                  ),
+                ),
+                Container(height: 1, color: Colors.black.withValues(alpha: 0.06)),
+
+                // ===== User card =====
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+                  child: Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF7FAFF),
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 32,
+                          backgroundColor: const Color(0xFFE2EDFF),
+                          backgroundImage: _user?.photoURL != null ? NetworkImage(_user!.photoURL!) : null,
+                          child: _user?.photoURL == null
+                              ? Text(
+                            username.isNotEmpty ? username[0].toUpperCase() : '?',
+                            style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF5D6AA1),
+                            ),
+                          )
+                              : null,
+                        ),
+                        const SizedBox(width: 14),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      username,
+                                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: 'Edit name',
+                                    icon: const Icon(Icons.edit, size: 18),
+                                    onPressed: _editName,
+                                  ),
+                                ],
+                              ),
+                              Text(
+                                _user?.email ?? 'Anonymous user',
+                                style: TextStyle(color: Colors.black.withValues(alpha: 0.6)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
+
+                // ===== Stats =====
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  child: Row(
+                    children: const [
+                      Expanded(child: _StatCard(label: 'Entries', value: '12', icon: Icons.book_outlined)),
+                      SizedBox(width: 10),
+                      Expanded(child: _StatCard(label: 'Relax (min)', value: '47', icon: Icons.self_improvement)),
+                      SizedBox(width: 10),
+                      Expanded(child: _StatCard(label: 'Streak', value: '5🔥', icon: Icons.local_fire_department_outlined)),
+                    ],
+                  ),
+                ),
+
+                // ===== Bio =====
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Bio', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+                      const SizedBox(height: 8),
+                      TextField(
+                        controller: _bioCtrl,
+                        maxLines: 3,
+                        decoration: InputDecoration(
+                          hintText: 'Write something about yourself…',
+                          filled: true,
+                          fillColor: Colors.white,
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide(color: Colors.black.withValues(alpha: 0.08)),
+                          ),
+                        ),
+                        onChanged: (_) => _savePrefs(),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // ===== Settings =====
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+                    ),
+                    child: Column(
+                      children: [
+                        SwitchListTile(
+                          title: const Text('Daily reminder'),
+                          subtitle: const Text('Get a gentle nudge to write or relax'),
+                          value: _dailyReminder,
+                          onChanged: (v) {
+                            setState(() => _dailyReminder = v);
+                            _savePrefs();
+                          },
+                        ),
+                        const Divider(height: 0),
+                        SwitchListTile(
+                          title: const Text('Relax sounds'),
+                          subtitle: const Text('Play soothing sounds in Relax page'),
+                          value: _relaxSounds,
+                          onChanged: (v) {
+                            setState(() => _relaxSounds = v);
+                            _savePrefs();
+                          },
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+
+                // ===== Actions =====
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton.icon(
+                          onPressed: () {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('Export coming soon ✨')),
+                            );
+                          },
+                          icon: const Icon(Icons.download_outlined),
+                          label: const Text('Export data'),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: FilledButton.icon(
+                          style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+                          onPressed: _signOut,
+                          icon: const Icon(Icons.logout),
+                          label: const Text('Sign out'),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
-          const SizedBox(height: 16),
-          TextField(
-            controller: _nameCtrl,
-            decoration: const InputDecoration(
-              labelText: 'Username',
-              border: OutlineInputBorder(),
-            ),
-          ),
-          const SizedBox(height: 16),
-          FilledButton.icon(
-            onPressed: _save,
-            icon: const Icon(Icons.check),
-            label: const Text('Save changes'),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-/// ===== Small Avatar =====
-class _Avatar extends StatelessWidget {
-  final String? photoPath;
-  const _Avatar({required this.photoPath});
-
-  @override
-  Widget build(BuildContext context) {
-    const radius = 44.0;
-    final color = Theme.of(context).colorScheme.primary;
-    if (photoPath != null &&
-        photoPath!.isNotEmpty &&
-        File(photoPath!).existsSync()) {
-      return CircleAvatar(
-        radius: radius,
-        backgroundImage: FileImage(File(photoPath!)),
-      );
-    }
-    return CircleAvatar(
-      radius: radius,
-      backgroundColor: Colors.white70,
-      child: Icon(Icons.person, size: 44, color: color),
-    );
-  }
-}
-
-/// ===== Range chip =====
-class _RangeChip extends StatelessWidget {
+/* === Overflow-safe Stat Card === */
+class _StatCard extends StatelessWidget {
   final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _RangeChip({
-    required this.label,
-    required this.selected,
-    required this.onTap,
-  });
+  final String value;
+  final IconData icon;
+  const _StatCard({required this.label, required this.value, required this.icon});
 
   @override
   Widget build(BuildContext context) {
-    return ChoiceChip(
-      label: Text(label),
-      selected: selected,
-      onSelected: (_) => onTap(),
-      materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFFF7FAFF),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: Colors.black.withValues(alpha: 0.06)),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Icon(icon, size: 20, color: const Color(0xFF5D6AA1)),
+          const SizedBox(width: 8),
+          // Constrain the text area to prevent overflow
+          Expanded(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  value,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800),
+                ),
+                Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(fontSize: 12, color: Colors.black.withValues(alpha: 0.6)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
-}
-
-/// ===== Mood chart (1..5 scale) =====
-class _MoodChart extends StatelessWidget {
-  final List<MoodEntry> data;
-  const _MoodChart({required this.data});
-  @override
-  Widget build(BuildContext context) {
-    return CustomPaint(
-      painter: _MoodChartPainter(data),
-      child: const SizedBox.expand(),
-    );
-  }
-}
-
-class _MoodChartPainter extends CustomPainter {
-  final List<MoodEntry> data;
-  _MoodChartPainter(this.data);
-
-  @override
-  void paint(Canvas canvas, Size size) {
-    final axis = Paint()
-      ..color = Colors.grey.shade400
-      ..strokeWidth = 1;
-
-    final grid = Paint()
-      ..color = Colors.grey.shade300
-      ..strokeWidth = 1;
-
-    final line = Paint()
-      ..color = Colors.blue
-      ..strokeWidth = 2
-      ..style = PaintingStyle.stroke;
-
-    final fill = Paint()
-      ..color = Colors.blue.withOpacity(0.15)
-      ..style = PaintingStyle.fill;
-
-    const left = 36.0, right = 12.0, top = 12.0, bottom = 24.0;
-    final w = size.width - left - right;
-    final h = size.height - top - bottom;
-    final origin = Offset(left, size.height - bottom);
-
-    // Axes
-    canvas.drawLine(
-      origin,
-      Offset(size.width - right, size.height - bottom),
-      axis,
-    ); // x
-    canvas.drawLine(origin, Offset(left, top), axis); // y
-
-    // y grid + labels
-    TextPainter _labelPainter(String t) {
-      final tp = TextPainter(
-        text: TextSpan(
-          text: t,
-          style: const TextStyle(fontSize: 10, color: Color(0xFF555555)),
-        ),
-        textDirection: TextDirection.ltr,
-      )..layout(minWidth: 0, maxWidth: left - 6);
-      return tp;
-    }
-
-    for (int v = 1; v <= 5; v++) {
-      final y = origin.dy - (v - 1) / 4 * h;
-      canvas.drawLine(Offset(left, y), Offset(size.width - right, y), grid);
-      final tp = _labelPainter('$v');
-      tp.paint(canvas, Offset(left - tp.width - 6, y - tp.height / 2));
-    }
-
-    if (data.isEmpty) return;
-
-    // Polyline
-    final n = data.length;
-    final dx = n <= 1 ? w : w / (n - 1);
-    final path = Path();
-    final fillPath = Path();
-
-    for (int i = 0; i < n; i++) {
-      final score = data[i].score.clamp(1, 5);
-      final x = left + dx * i;
-      final y = origin.dy - (score - 1) / 4 * h;
-      if (i == 0) {
-        path.moveTo(x, y);
-        fillPath.moveTo(x, origin.dy);
-        fillPath.lineTo(x, y);
-      } else {
-        path.lineTo(x, y);
-        fillPath.lineTo(x, y);
-      }
-    }
-    final lastX = left + dx * (n - 1);
-    fillPath.lineTo(lastX, origin.dy);
-    fillPath.close();
-
-    canvas.drawPath(fillPath, fill);
-    canvas.drawPath(path, line);
-
-    // Dots
-    final dot = Paint()..color = Colors.blue;
-    for (int i = 0; i < n; i++) {
-      final score = data[i].score.clamp(1, 5);
-      final x = left + dx * i;
-      final y = origin.dy - (score - 1) / 4 * h;
-      canvas.drawCircle(Offset(x, y), 3, dot);
-    }
-  }
-
-  @override
-  bool shouldRepaint(covariant _MoodChartPainter oldDelegate) =>
-      oldDelegate.data != data;
 }

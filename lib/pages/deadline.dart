@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import '../widgets/nav.dart';
 
 /// ===== 动态 Tag 定义 =====
@@ -488,6 +489,12 @@ class _DeadlineState extends State<Deadline> {
                       children: [
                         TextButton.icon(
                           onPressed: _pickDate,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            minimumSize: const Size(0, 36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                           icon: const Icon(Icons.calendar_today_outlined, size: 16),
                           label: Text(
                             '${_selectedDate.day}/${_selectedDate.month}/${_selectedDate.year}',
@@ -495,6 +502,12 @@ class _DeadlineState extends State<Deadline> {
                         ),
                         TextButton.icon(
                           onPressed: _pickTime,
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 8),
+                            minimumSize: const Size(0, 36),
+                            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                          ),
                           icon: const Icon(Icons.schedule, size: 16),
                           label: Text(_selectedTime.format(context)),
                         ),
@@ -503,6 +516,9 @@ class _DeadlineState extends State<Deadline> {
                           onPressed: _addTask,
                           style: ElevatedButton.styleFrom(
                             elevation: 0,
+                            minimumSize: const Size(64, 36),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 12, vertical: 8),
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),

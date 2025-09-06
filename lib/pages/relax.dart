@@ -232,6 +232,107 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     "Your calmness is your crown.",
     "Every day is a new chance for peace.",
     "The quiet soul shines the brightest.",
+    "The sun will rise, and we will try again.",
+    "Calm mind brings inner strength.",
+    "Breathe deeply, let worries fade.",
+    "Every sunset brings the promise of a new dawn.",
+    "Peace begins with a smile.",
+    "Happiness radiates from within.",
+    "The present moment is all you need.",
+    "Shine like the sun, even behind the clouds.",
+    "Every breath is a chance to begin again.",
+    "Serenity is the true power of life.",
+    "The quiet morning carries endless hope.",
+    "Gratitude turns little things into enough.",
+    "The world is more beautiful when the heart is calm.",
+    "Light comes after the darkest night.",
+    "Sometimes silence is the best answer.",
+    "Smiles are free yet priceless.",
+    "Simple things bring the greatest joy.",
+    "Storms teach us how to dance in the rain.",
+    "Your heart knows the way, run in that direction.",
+    "Kindness is never wasted.",
+    "Peace is found within, not outside.",
+    "The softest hearts carry the strongest souls.",
+    "Even small lights can brighten the darkest places.",
+    "Your breath is your anchor.",
+    "Slow down, life is not a race.",
+    "Nature whispers healing words.",
+    "The sun shines even when clouds cover it.",
+    "Every ending is a hidden beginning.",
+    "Balance is the secret to happiness.",
+    "Time heals what reason cannot.",
+    "Patience grows beautiful things.",
+    "Life is not perfect, but moments can be.",
+    "The soul needs rest to bloom.",
+    "Dreams grow in silence.",
+    "Self-love is the seed of peace.",
+    "No storm lasts forever.",
+    "Hearts speak the language of truth.",
+    "Change is the rhythm of life.",
+    "Even the moon borrows light.",
+    "You are enough, always.",
+    "True wealth is a peaceful heart.",
+    "Soft rain grows green fields.",
+    "Joy is not found, it is created.",
+    "When you pause, the world softens.",
+    "Gratitude unlocks abundance.",
+    "Inner calm reflects outer beauty.",
+    "Listen more, worry less.",
+    "The best journeys are inward.",
+    "Gentleness conquers anger.",
+    "Moments matter more than years.",
+    "A calm ocean mirrors the sky.",
+    "Hope is stronger than fear.",
+    "Hearts heal in time.",
+    "Every flower blooms in its season.",
+    "The breeze carries forgotten dreams.",
+    "Smiles are bridges between souls.",
+    "Peaceful thoughts invite peaceful days.",
+    "Courage is quiet strength.",
+    "Contentment is the purest wealth.",
+    "Life flows like water, let it be.",
+    "Breathe, and let it go.",
+    "Happiness begins with acceptance.",
+    "Trust the timing of your life.",
+    "Rest is also progress.",
+    "The stars remind us we are not alone.",
+    "Stillness is where wisdom lives.",
+    "Every seed hides a forest.",
+    "Gentle words build strong bonds.",
+    "Healing takes patience, not haste.",
+    "The simplest joys are the richest.",
+    "Your light is needed in this world.",
+    "Calm seas create clear reflections.",
+    "Smiles open locked hearts.",
+    "Every step matters, no matter how small.",
+    "Let go, and grow.",
+    "A kind word lingers forever.",
+    "Silence sometimes speaks loudest.",
+    "Inner peace is true success.",
+    "Be the warmth you seek.",
+    "The present moment is home.",
+    "Even shadows prove there is light.",
+    "Gentleness is strength under control.",
+    "Hearts bloom in kindness.",
+    "Your breath is your safe place.",
+    "The future begins with this breath.",
+    "Time flows like a quiet river.",
+    "A grateful heart is a magnet for peace.",
+    "Peace makes every place beautiful.",
+    "Even whispers carry wisdom.",
+    "The earth heals those who listen.",
+    "Smiles are sunlight for the soul.",
+    "Let your worries rest in silence.",
+    "The sky never stops being blue above the clouds.",
+    "Every calm breath builds strength.",
+    "Small joys make a big life.",
+    "The heart always finds its way home.",
+    "Still waters run deep.",
+    "Happiness blooms when shared.",
+    "Your calmness is your crown.",
+    "Every day is a new chance for peace.",
+    "The quiet soul shines the brightest.",
   ];
 
   void _showFortuneSun() {
@@ -265,7 +366,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
         backgroundColor: const Color(0xFFBFD9FB),
         elevation: 0,
       ),
-      bottomNavigationBar: const Nav(),
+      bottomNavigationBar: const Nav(currentIndex: 2),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -284,6 +385,10 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                     final scale = _breath.value;
                     final haloScale = 1.0 + (scale - 1.0) * 0.25;
                     final haloOpacity =
+                        (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20).clamp(
+                          0.25,
+                          0.45,
+                        );
                         (0.25 + (scale - 0.88) / (1.22 - 0.88) * 0.20).clamp(
                           0.25,
                           0.45,
@@ -312,6 +417,8 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                             width: 160,
                             height: 160,
                             fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.pets, size: 120),
                           ),
                         ),
                       ],
@@ -341,7 +448,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
           Row(
             children: [
               Expanded(
-                child: _SquareCard(
+                child: _SquareMeditationCard(
                   iconPath: 'images/Headset.png',
                   title: _medPlaying ? 'Stop Meditation' : 'Meditation',
                   onTap: _toggleMeditation,
@@ -446,7 +553,14 @@ class _SquareCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(iconPath, width: 60, height: 60, fit: BoxFit.contain),
+              Image.asset(
+                iconPath,
+                width: 60,
+                height: 60,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.wb_sunny_outlined, size: 48),
+              ),
               const SizedBox(height: 12),
               Text(
                 title,
@@ -517,7 +631,9 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
   void _computeRise() {
     final bearBox =
         widget.bearKey.currentContext?.findRenderObject() as RenderBox?;
+        widget.bearKey.currentContext?.findRenderObject() as RenderBox?;
     final originBox =
+        _originKey.currentContext?.findRenderObject() as RenderBox?;
         _originKey.currentContext?.findRenderObject() as RenderBox?;
     if (bearBox == null || originBox == null) return;
 
@@ -574,44 +690,73 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                             final t = _stage == _BalloonStage.flying
                                 ? _t.value
                                 : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
+                          animation: _t,
+                          builder: (_, __) {
+                            final t = _stage == _BalloonStage.flying
+                                ? _t.value
+                                : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
 
-                            double y(double base) => -_risePx * t * base; // up
+                            // 上升位移 & 左右散开
+                            double y(double base) => _risePx * t * base;
                             double spread(double maxDx) {
                               final s = Curves.easeInOut.transform(
                                 (t - 0.1).clamp(0, 1),
                               );
-                              return maxDx * s; // left-right spread
+                              return maxDx * s;
                             }
+
+                            // 靠近顶部时逐步淡出 + 轻微缩小
+                            const fadeStart = 0.75; // 75% 进度开始淡出
+                            final fadeT = ((t - fadeStart) / (1 - fadeStart))
+                                .clamp(0.0, 1.0);
+                            final opacity = (_stage == _BalloonStage.docked)
+                                ? 0.0 // 停靠后完全透明
+                                : (1.0 - fadeT);
+                            final scale = 1.0 - 0.08 * fadeT;
+
+                            Widget fading(Widget child) => Opacity(
+                              opacity: opacity,
+                              child: Transform.scale(
+                                scale: scale,
+                                child: child,
+                              ),
+                            );
 
                             return Stack(
                               alignment: Alignment.bottomCenter,
                               children: [
-                                _BalloonSprite(
-                                  dx: -spread(60),
-                                  dy: y(1.00),
-                                  colors: const [
-                                    Color(0xFFFF9FB9),
-                                    Color(0xFFFFC8D8),
-                                  ],
-                                  stringBend: -18,
+                                fading(
+                                  _BalloonSprite(
+                                    dx: -spread(60),
+                                    dy: y(1.00),
+                                    colors: const [
+                                      Color(0xFFFF9FB9),
+                                      Color(0xFFFFC8D8),
+                                    ],
+                                    stringBend: -18,
+                                  ),
                                 ),
-                                _BalloonSprite(
-                                  dx: 0,
-                                  dy: y(1.05),
-                                  colors: const [
-                                    Color(0xFFB7D7F8),
-                                    Color(0xFFD8E9FF),
-                                  ],
-                                  stringBend: 0,
+                                fading(
+                                  _BalloonSprite(
+                                    dx: 0,
+                                    dy: y(1.05),
+                                    colors: const [
+                                      Color(0xFFB7D7F8),
+                                      Color(0xFFD8E9FF),
+                                    ],
+                                    stringBend: 0,
+                                  ),
                                 ),
-                                _BalloonSprite(
-                                  dx: spread(60),
-                                  dy: y(0.95),
-                                  colors: const [
-                                    Color(0xFFFFEB99),
-                                    Color(0xFFFFF5C7),
-                                  ],
-                                  stringBend: 18,
+                                fading(
+                                  _BalloonSprite(
+                                    dx: spread(60),
+                                    dy: y(0.95),
+                                    colors: const [
+                                      Color(0xFFFFEB99),
+                                      Color(0xFFFFF5C7),
+                                    ],
+                                    stringBend: 18,
+                                  ),
                                 ),
                               ],
                             );
@@ -715,6 +860,7 @@ class _BalloonSprite extends StatelessWidget {
           SizedBox(
             width: 46,
             height: 50,
+            child: CustomPaint(painter: _StringPainter(bendX: stringBend)),
             child: CustomPaint(painter: _StringPainter(bendX: stringBend)),
           ),
         ],

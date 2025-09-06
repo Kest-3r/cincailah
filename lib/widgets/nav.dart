@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
-// Distinct prefixes for clarity
-import '../pages/home.dart' as home_page;
-import '../pages/diary.dart' as diary_page;
-import '../pages/relax.dart' as relax_page;
-import '../pages/profile.dart' as profile_page;
+// 每个页面用不同别名
+import '../pages/home.dart' as home;
+import '../pages/diary.dart' as diary;
+import '../pages/relax.dart' as relax;
+import '../pages/profile.dart' as profile;
 
-/// Bottom navigation bar (image-first; falls back to Icon+text if image missing)
+/// 底部导航
 class Nav extends StatelessWidget {
-  /// Current index (0: Home, 1: Diary, 2: Relax, 3: Profile)
   final int currentIndex;
   const Nav({super.key, this.currentIndex = -1});
 
@@ -19,10 +18,54 @@ class Nav extends StatelessWidget {
     );
   }
 
+  /// 一个按钮：先尝试图片，失败就用 Icon+文字
+  Widget _navButton({
+    required BuildContext context,
+    required String assetPath,
+    required IconData fallbackIcon,
+    required String label,
+    required VoidCallback onTap,
+    bool selected = false,
+  }) {
+    final color = selected ? Colors.black : Colors.black87;
+
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(24),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // 瘦身：减少左右内边距
+        decoration: BoxDecoration(
+          color: selected ? const Color(0xFFEEF5FF) : Colors.transparent,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: Row(
+          children: [
+            Image.asset(
+              assetPath,
+              width: 24,   // 瘦身：图标由 28 → 24
+              height: 24,  // 瘦身：图标由 28 → 24
+              errorBuilder: (_, __, ___) =>
+                  Icon(fallbackIcon, size: 18, color: color), // 瘦身：Icon 由 20 → 18
+            ),
+            const SizedBox(width: 4), // 瘦身：间距由 6 → 4
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13, // 瘦身：字体稍微小一点（默认 14）
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return SafeArea(
-      minimum: const EdgeInsets.all(12),
+      minimum: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
         height: 64,
@@ -34,118 +77,41 @@ class Nav extends StatelessWidget {
           ],
         ),
         child: Row(
-          children: const [
-            _NavItem(
-              index: 0,
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _navButton(
+              context: context,
               assetPath: 'images/Home.png',
-              label: 'Home',
               fallbackIcon: Icons.home_outlined,
+              label: 'Home',
+              selected: currentIndex == 0,
+              onTap: () => _go(context, home.Home()),
             ),
-            _NavItem(
-              index: 1,
+            _navButton(
+              context: context,
               assetPath: 'images/Diary.png',
-              label: 'Diary',
               fallbackIcon: Icons.edit_calendar_outlined,
+              label: 'Diary',
+              selected: currentIndex == 1,
+              onTap: () => _go(context, diary.Diary()),
             ),
-            _NavItem(
-              index: 2,
+            _navButton(
+              context: context,
               assetPath: 'images/Relax.png',
-              label: 'Relax',
               fallbackIcon: Icons.spa_outlined,
+              label: 'Relax',
+              selected: currentIndex == 2,
+              onTap: () => _go(context, relax.Relax()),
             ),
-            _NavItem(
-              index: 3,
+            _navButton(
+              context: context,
               assetPath: 'images/Profile.png',
-              label: 'Profile',
               fallbackIcon: Icons.person_outline,
+              label: 'Profile',
+              selected: currentIndex == 3,
+              onTap: () => _go(context, profile.Profile()),
             ),
           ],
-        ),
-      ),
-    );
-  }
-}
-
-class _NavItem extends StatelessWidget {
-  final int index;
-  final String assetPath;
-  final String label;
-  final IconData fallbackIcon;
-
-  const _NavItem({
-    required this.index,
-    required this.assetPath,
-    required this.label,
-    required this.fallbackIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    // Read selected state from parent via constructor if you prefer; here we infer from Nav.currentIndex
-    final nav = context.findAncestorWidgetOfExactType<Nav>();
-    final selected = nav?.currentIndex == index;
-    final Color color = selected ? Colors.black : Colors.black87;
-
-    void _go(Widget page) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(builder: (_) => page),
-      );
-    }
-
-    return Expanded(
-      child: InkWell(
-        onTap: () {
-          switch (index) {
-            case 0:
-              _go(home_page.Home());
-              break;
-            case 1:
-              _go(diary_page.Diary());
-              break;
-            case 2:
-              _go(relax_page.Relax());
-              break;
-            case 3:
-              _go(profile_page.Profile());
-              break;
-          }
-        },
-        borderRadius: BorderRadius.circular(24),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-          decoration: BoxDecoration(
-            color: selected ? const Color(0xFFEEF5FF) : Colors.transparent,
-            borderRadius: BorderRadius.circular(24),
-          ),
-          // Key trick: FittedBox scales DOWN the entire row (icon+text) if it barely overflows.
-          // This keeps full labels visible and removes the 4.4 px overflow.
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            alignment: Alignment.center,
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Image.asset(
-                  assetPath,
-                  width: 24, // slightly smaller to give breathing room
-                  height: 24,
-                  errorBuilder: (_, __, ___) =>
-                      Icon(fallbackIcon, size: 22, color: color),
-                ),
-                const SizedBox(width: 6),
-                // Full label, no ellipsis; FittedBox will downscale slightly if needed
-                Text(
-                  label,
-                  softWrap: false,
-                  style: TextStyle(
-                    color: color,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
-              ],
-            ),
-          ),
         ),
       ),
     );

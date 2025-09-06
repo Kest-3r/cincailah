@@ -1,60 +1,45 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     package="com.example.cincailah">
 
-    <!-- 网络访问权限（Firebase、Google API 必须） -->
-    <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Internet for Firebase/HTTP -->
+    <uses-permission android:name="android.permission.INTERNET" />
 
-    <!-- 如果你要用本地系统日历（device_calendar 插件）才需要 -->
+    <!-- (Optional) only if you will access device calendar -->
+    <!--
     <uses-permission android:name="android.permission.READ_CALENDAR"/>
     <uses-permission android:name="android.permission.WRITE_CALENDAR"/>
+    -->
 
     <application
         android:label="cincailah"
-        android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
-            android:launchMode="singleTop"
-            android:taskAffinity=""
             android:theme="@style/LaunchTheme"
-            android:configChanges="
-                orientation|
-                keyboardHidden|
-                keyboard|
-                screenSize|
-                smallestScreenSize|
-                locale|
-                layoutDirection|
-                fontScale|
-                screenLayout|
-                density|
-                uiMode"
-            android:hardwareAccelerated="true"
+            android:configChanges="orientation|keyboardHidden|keyboard|screenSize|locale|layoutDirection|fontScale|screenLayout|density|uiMode"
             android:windowSoftInputMode="adjustResize">
 
-            <!-- 启动时的过渡主题（Flutter 初始化时可见） -->
+            <!-- Theme shown while Flutter initializes -->
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
 
-            <!-- 启动入口 -->
+            <!-- Launcher entry -->
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
-
         </activity>
 
-        <!-- Flutter 引擎版本标记（不要删） -->
+        <!-- Flutter engine marker -->
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
-
     </application>
 
-    <!-- 用于 Flutter text 插件的查询配置 -->
+    <!-- For PROCESS_TEXT intents used by some text plugins -->
     <queries>
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />

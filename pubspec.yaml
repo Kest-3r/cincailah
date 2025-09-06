@@ -1,53 +1,56 @@
 name: cincailah
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: "none"
 version: 1.0.0+1
-
-
-
 
 environment:
   sdk: ^3.9.0
 
 dependencies:
-  fl_chart: ^0.66.0
   flutter:
     sdk: flutter
   url_launcher: ^6.3.0
-  just_audio: ^0.9.39
-  audio_session: ^0.1.21
+  flutter_localizations: # ← add this
+    sdk: flutter
 
   # UI
   cupertino_icons: ^1.0.8
 
+  #OpenAI
+  dart_openai: ^5.1.0
+
+  # Charts / audio
+  fl_chart: ^0.66.0
+  audioplayers: ^6.5.0
+
   # Firebase
-  firebase_core: ^4.0.0
-  firebase_auth: ^6.0.1
-  cloud_firestore: ^6.0.0
+  firebase_core: ^4.1.0
+  firebase_auth: ^6.0.2
+  cloud_firestore: ^6.0.1
 
-
+  # Calendar / Google
   device_calendar: ^4.3.3
   table_calendar: ^3.2.0
-
-  #  Google Calendar API
   google_sign_in: ^6.2.1
   googleapis: ^13.2.0
 
-  # HTTP
+  # HTTP / Storage
   http: ^1.2.2
-
-  # Profile
-  image_picker: ^1.1.2
-  shared_preferences: ^2.3.2
-
+  # env class for storing api keys
+  envied: ^1.2.1
+  shared_preferences: ^2.3.3 # ← use a real version (or run `flutter pub add shared_preferences`)
+  just_audio: ^0.10.5
+  audio_session: ^0.2.2
+  
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^5.0.0
+  envied_generator: ^1.2.1
+  build_runner: ^2.7.1
 
 flutter:
   uses-material-design: true
   assets:
     - images/
-    - audio/
-    - audio/song/
+    - sounds/
