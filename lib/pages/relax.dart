@@ -83,7 +83,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
 
     final p = AudioPlayer();
     await p.setLoopMode(LoopMode.one);
-    await p.setAudioSource(AudioSource.asset('audio/meditation.ogg'));
+    await p.setAudioSource(AudioSource.asset('audio/song/bundleOfJoy.mp3'));
     await p.setVolume(0.7);
     _medPlayer = p;
 
@@ -358,43 +358,6 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
             ],
           ),
 
-          // Mini now-playing strip (visible only while meditation is active)
-          /*
-          if (_medPlaying) ...[
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.06),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Row(
-                children: [
-                  const Icon(Icons.self_improvement),
-                  const SizedBox(width: 10),
-                  const Expanded(
-                    child: Text(
-                      'Meditation is playing (loops)',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                  ),
-                  TextButton.icon(
-                    onPressed: _medLoading ? null : _toggleMeditation,
-                    icon: const Icon(Icons.stop),
-                    label: const Text('Stop'),
-                  ),
-                ],
-              ),
-            ),
-          ],
-          */
           if (_fortuneText != null) ...[
             const SizedBox(height: 16),
             Container(
