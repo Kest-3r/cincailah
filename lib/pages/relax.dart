@@ -206,24 +206,6 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
     });
   }
 
-  /*void _showMeditationTip() {
-    showDialog(
-      context: context,
-      builder: (_) => AlertDialog(
-        title: const Text('5 Minutes meditation'),
-        content: const Text(
-          'Music coming soon.\nFor now, take a slow deep breath and enjoy the moment.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
-    );
-  }*/
-
   @override
   void dispose() {
     _breathCtrl.dispose();
@@ -241,7 +223,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
         backgroundColor: const Color(0xFFBFD9FB),
         elevation: 0,
       ),
-      bottomNavigationBar: const Nav(),
+      bottomNavigationBar: const Nav(currentIndex: 2),
       body: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
@@ -252,8 +234,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
             child: GestureDetector(
               onTap: _toggleBreathing,
               child: Container(
-                // 用于测量位置
-                key: _bearKey,
+                key: _bearKey, // 用于测量位置
                 child: AnimatedBuilder(
                   animation: _breathCtrl,
                   builder: (_, __) {
@@ -288,6 +269,8 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                             width: 160,
                             height: 160,
                             fit: BoxFit.contain,
+                            errorBuilder: (_, __, ___) =>
+                                const Icon(Icons.pets, size: 120),
                           ),
                         ),
                       ],
@@ -333,7 +316,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
             ],
           ),
 
-          // Fortune 文案（放在气球卡片之上，避免遮挡）
+          // Fortune 文案
           if (_fortuneText != null) ...[
             const SizedBox(height: 16),
             Container(
@@ -343,7 +326,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.06),
+                    color: Colors.black.withOpacity(0.06),
                     blurRadius: 10,
                     offset: const Offset(0, 4),
                   ),
@@ -359,7 +342,7 @@ class _RelaxState extends State<Relax> with TickerProviderStateMixin {
 
           const SizedBox(height: 16),
 
-          // ===== 气球：按钮 → 静止聚拢 → 起飞到小熊头顶停住 → 再点复位 =====
+          // ===== 气球：按钮 → 静止聚拢 → 起飞到小熊头顶逐渐消失 → 停靠后透明 → 再点复位 =====
           BalloonToggleCard(bearKey: _bearKey),
         ],
       ),
@@ -393,7 +376,14 @@ class _SquareCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Image.asset(iconPath, width: 60, height: 60, fit: BoxFit.contain),
+              Image.asset(
+                iconPath,
+                width: 60,
+                height: 60,
+                fit: BoxFit.contain,
+                errorBuilder: (_, __, ___) =>
+                    const Icon(Icons.wb_sunny_outlined, size: 48),
+              ),
               const SizedBox(height: 12),
               Text(
                 title,
@@ -414,7 +404,7 @@ class _SquareCard extends StatelessWidget {
   }
 }
 
-//card for music meditation (with sound animation)
+// ====== 冥想音乐卡片（带脉冲动画） ======
 class _SquareMeditationCard extends StatefulWidget {
   final String iconPath;
   final String title;
@@ -456,14 +446,11 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
       } else {
         _soundAnimationController.repeat();
         await _audioPlayer.setReleaseMode(ReleaseMode.loop);
+        // ✅ 正确：本地 assets 音频
         await _audioPlayer.play(AssetSource('sounds/bundleOfJoy.mp3'));
       }
-
-      setState(() {
-        isPlaying = !isPlaying;
-      });
+      setState(() => isPlaying = !isPlaying);
     } catch (e) {
-      print('Audio error: $e');
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('Failed to play audio: $e')));
@@ -485,7 +472,6 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
           child: Stack(
             alignment: Alignment.center,
             children: [
-              // soundAnimations only when playing (hidden otherwise)
               if (isPlaying)
                 SizedBox(
                   width: 100,
@@ -501,7 +487,6 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
                               1.0;
                           final size = 40 + (progress * 60);
                           final opacity = (1 - progress).clamp(0.0, 1.0);
-
                           return Opacity(
                             opacity: opacity,
                             child: Container(
@@ -521,8 +506,6 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
                     },
                   ),
                 ),
-
-              // Original card layout (icon + title)
               Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -531,6 +514,8 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
                     width: 60,
                     height: 60,
                     fit: BoxFit.contain,
+                    errorBuilder: (_, __, ___) =>
+                        const Icon(Icons.headset, size: 48),
                   ),
                   const SizedBox(height: 12),
                   Text(
@@ -554,7 +539,7 @@ class _SquareMeditationCardState extends State<_SquareMeditationCard>
   }
 }
 
-// ================== 气球卡片（自适应飞行高度） ==================
+// ================== 气球卡片（自适应飞行高度 + 顶部淡出/缩小） ==================
 enum _BalloonStage { button, ready, flying, docked }
 
 class BalloonToggleCard extends StatefulWidget {
@@ -589,7 +574,7 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
 
     _flyCtrl.addStatusListener((s) {
       if (s == AnimationStatus.completed) {
-        setState(() => _stage = _BalloonStage.docked); // 顶部停住
+        setState(() => _stage = _BalloonStage.docked); // 顶部停住（透明）
       }
     });
   }
@@ -660,43 +645,67 @@ class _BalloonToggleCardState extends State<BalloonToggleCard>
                                 ? _t.value
                                 : (_stage == _BalloonStage.docked ? 1.0 : 0.0);
 
-                            double y(double base) => _risePx * t * base; // 上升
+                            // 上升位移 & 左右散开
+                            double y(double base) => _risePx * t * base;
                             double spread(double maxDx) {
                               final s = Curves.easeInOut.transform(
                                 (t - 0.1).clamp(0, 1),
                               );
-                              return maxDx * s; // 左右散开
+                              return maxDx * s;
                             }
+
+                            // 靠近顶部时逐步淡出 + 轻微缩小
+                            const fadeStart = 0.75; // 75% 进度开始淡出
+                            final fadeT = ((t - fadeStart) / (1 - fadeStart))
+                                .clamp(0.0, 1.0);
+                            final opacity = (_stage == _BalloonStage.docked)
+                                ? 0.0 // 停靠后完全透明
+                                : (1.0 - fadeT);
+                            final scale = 1.0 - 0.08 * fadeT;
+
+                            Widget fading(Widget child) => Opacity(
+                              opacity: opacity,
+                              child: Transform.scale(
+                                scale: scale,
+                                child: child,
+                              ),
+                            );
 
                             return Stack(
                               alignment: Alignment.bottomCenter,
                               children: [
-                                _BalloonSprite(
-                                  dx: -spread(60),
-                                  dy: y(1.00),
-                                  colors: const [
-                                    Color(0xFFFF9FB9),
-                                    Color(0xFFFFC8D8),
-                                  ],
-                                  stringBend: -18,
+                                fading(
+                                  _BalloonSprite(
+                                    dx: -spread(60),
+                                    dy: y(1.00),
+                                    colors: const [
+                                      Color(0xFFFF9FB9),
+                                      Color(0xFFFFC8D8),
+                                    ],
+                                    stringBend: -18,
+                                  ),
                                 ),
-                                _BalloonSprite(
-                                  dx: 0,
-                                  dy: y(1.05),
-                                  colors: const [
-                                    Color(0xFFB7D7F8),
-                                    Color(0xFFD8E9FF),
-                                  ],
-                                  stringBend: 0,
+                                fading(
+                                  _BalloonSprite(
+                                    dx: 0,
+                                    dy: y(1.05),
+                                    colors: const [
+                                      Color(0xFFB7D7F8),
+                                      Color(0xFFD8E9FF),
+                                    ],
+                                    stringBend: 0,
+                                  ),
                                 ),
-                                _BalloonSprite(
-                                  dx: spread(60),
-                                  dy: y(0.95),
-                                  colors: const [
-                                    Color(0xFFFFEB99),
-                                    Color(0xFFFFF5C7),
-                                  ],
-                                  stringBend: 18,
+                                fading(
+                                  _BalloonSprite(
+                                    dx: spread(60),
+                                    dy: y(0.95),
+                                    colors: const [
+                                      Color(0xFFFFEB99),
+                                      Color(0xFFFFF5C7),
+                                    ],
+                                    stringBend: 18,
+                                  ),
                                 ),
                               ],
                             );
@@ -772,7 +781,7 @@ class _BalloonSprite extends StatelessWidget {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: .12),
+                      color: Colors.black.withOpacity(.12),
                       blurRadius: 8,
                       offset: const Offset(0, 4),
                     ),
@@ -786,7 +795,7 @@ class _BalloonSprite extends StatelessWidget {
                   width: 10,
                   height: 14,
                   decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: .55),
+                    color: Colors.white.withOpacity(.55),
                     borderRadius: BorderRadius.circular(8),
                   ),
                 ),

@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
 
-// 用别名，避免命名冲突
-import '../pages/home.dart' as pages;
-import '../pages/diary.dart' as pages;
-import '../pages/relax.dart' as pages;
-import '../pages/profile.dart' as pages;
+// 每个页面用不同别名
+import '../pages/home.dart' as home;
+import '../pages/diary.dart' as diary;
+import '../pages/relax.dart' as relax;
+import '../pages/profile.dart' as profile;
 
-/// 底部导航（图片优先，找不到图片时自动回退到 Icon+文字）
+/// 底部导航
 class Nav extends StatelessWidget {
-  /// 当前索引（0:Home 1:Diary 2:Relax 3:Profile）
   final int currentIndex;
   const Nav({super.key, this.currentIndex = -1});
 
@@ -34,7 +33,7 @@ class Nav extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(24),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), // 瘦身：减少左右内边距
         decoration: BoxDecoration(
           color: selected ? const Color(0xFFEEF5FF) : Colors.transparent,
           borderRadius: BorderRadius.circular(24),
@@ -43,14 +42,20 @@ class Nav extends StatelessWidget {
           children: [
             Image.asset(
               assetPath,
-              width: 28,
-              height: 28,
+              width: 24,   // 瘦身：图标由 28 → 24
+              height: 24,  // 瘦身：图标由 28 → 24
               errorBuilder: (_, __, ___) =>
-                  Icon(fallbackIcon, size: 20, color: color),
+                  Icon(fallbackIcon, size: 18, color: color), // 瘦身：Icon 由 20 → 18
             ),
-            const SizedBox(width: 6),
-            Text(label,
-                style: TextStyle(color: color, fontWeight: FontWeight.w600)),
+            const SizedBox(width: 4), // 瘦身：间距由 6 → 4
+            Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13, // 瘦身：字体稍微小一点（默认 14）
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ],
         ),
       ),
@@ -59,57 +64,55 @@ class Nav extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.all(12),
-      padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-      height: 64,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(40),
-        boxShadow: const [
-          BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(2, 2)),
-        ],
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: [
-          // Home
-          _navButton(
-            context: context,
-            assetPath: 'images/Home.png',
-            fallbackIcon: Icons.home_outlined,
-            label: 'Home',
-            selected: currentIndex == 0,
-            onTap: () => _go(context, pages.Home()),
-          ),
-          // Diary
-          _navButton(
-            context: context,
-            assetPath: 'images/Diary.png',
-            fallbackIcon: Icons.edit_calendar_outlined,
-            label: 'Diary',
-            selected: currentIndex == 1,
-            onTap: () => _go(context, pages.Diary()), // ⚠️ 大写 D
-          ),
-          // Relax
-          _navButton(
-            context: context,
-            assetPath: 'images/Relax.png',
-            fallbackIcon: Icons.spa_outlined,
-            label: 'Relax',
-            selected: currentIndex == 2,
-            onTap: () => _go(context, pages.Relax()),
-          ),
-          // Profile
-          _navButton(
-            context: context,
-            assetPath: 'images/Profile.png',
-            fallbackIcon: Icons.person_outline,
-            label: 'Profile',
-            selected: currentIndex == 3,
-            onTap: () => _go(context, pages.Profile()),
-          ),
-        ],
+    return SafeArea(
+      minimum: const EdgeInsets.only(left: 12, right: 12, bottom: 12),
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+        height: 64,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(40),
+          boxShadow: const [
+            BoxShadow(color: Colors.black26, blurRadius: 8, offset: Offset(2, 2)),
+          ],
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: [
+            _navButton(
+              context: context,
+              assetPath: 'images/Home.png',
+              fallbackIcon: Icons.home_outlined,
+              label: 'Home',
+              selected: currentIndex == 0,
+              onTap: () => _go(context, home.Home()),
+            ),
+            _navButton(
+              context: context,
+              assetPath: 'images/Diary.png',
+              fallbackIcon: Icons.edit_calendar_outlined,
+              label: 'Diary',
+              selected: currentIndex == 1,
+              onTap: () => _go(context, diary.Diary()),
+            ),
+            _navButton(
+              context: context,
+              assetPath: 'images/Relax.png',
+              fallbackIcon: Icons.spa_outlined,
+              label: 'Relax',
+              selected: currentIndex == 2,
+              onTap: () => _go(context, relax.Relax()),
+            ),
+            _navButton(
+              context: context,
+              assetPath: 'images/Profile.png',
+              fallbackIcon: Icons.person_outline,
+              label: 'Profile',
+              selected: currentIndex == 3,
+              onTap: () => _go(context, profile.Profile()),
+            ),
+          ],
+        ),
       ),
     );
   }
