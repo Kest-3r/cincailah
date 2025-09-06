@@ -1,7 +1,15 @@
+// lib/pages/diary.dart
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:fl_chart/fl_chart.dart'; // 新增：画折线图
+import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/nav.dart';
+
+class Diary extends StatefulWidget {
+  const Diary({super.key});
+  @override
+  State<Diary> createState() => _DiaryState();
+}
 
 enum Mood { veryHappy, calm, neutral, sad, verySad }
 
@@ -13,327 +21,216 @@ const _moodEmoji = {
   Mood.verySad: '😢',
 };
 
-class Diary extends StatefulWidget {
-  const Diary({super.key});
-  @override
-  State<Diary> createState() => _DiaryState();
-}
+int moodToValue(Mood m) => {
+  Mood.verySad: 1,
+  Mood.sad: 2,
+  Mood.neutral: 3,
+  Mood.calm: 4,
+  Mood.veryHappy: 5,
+}[m]!;
 
 class _DiaryState extends State<Diary> {
-  final _formKey = GlobalKey<FormState>();
-  final _ctrl = TextEditingController();
   Mood _selected = Mood.veryHappy;
+  final _ctrl = TextEditingController();
   bool _saving = false;
-  String? _error;
 
-  CollectionReference<Map<String, dynamic>> get _col =>
-      FirebaseFirestore.instance.collection('moods');
+  // ---------- Firebase helpers ----------
+  Future<User> _ensureUser() async {
+    final auth = FirebaseAuth.instance;
+    return auth.currentUser ?? (await auth.signInAnonymously()).user!;
+  }
+
+  CollectionReference<Map<String, dynamic>> _col(User u) =>
+      FirebaseFirestore.instance.collection('users').doc(u.uid).collection('moods');
 
   Future<void> _save() async {
     if (_saving) return;
-    if (!_formKey.currentState!.validate()) return;
-
-    FocusScope.of(context).unfocus();
-    setState(() {
-      _saving = true;
-      _error = null;
-    });
-
+    setState(() => _saving = true);
     try {
-      await _col.add({
+      final user = await _ensureUser();
+      await _col(user).add({
+        'mood': moodToValue(_selected),       // 1..5
         'text': _ctrl.text.trim(),
-        'mood': _selected.name,
-        'ts': FieldValue.serverTimestamp(),
+        'ts': FieldValue.serverTimestamp(),   // server time
       });
-
-      if (!mounted) return;
       _ctrl.clear();
-      ScaffoldMessenger.of(context)
-          .showSnackBar(const SnackBar(content: Text('Saved!')));
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Saved ✅')),
+        );
+      }
     } catch (e) {
-      setState(() => _error = 'Save failed: $e');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Save failed: $e')),
+        );
+      }
     } finally {
       if (mounted) setState(() => _saving = false);
     }
   }
 
-  @override
-  void dispose() {
-    _ctrl.dispose();
-    super.dispose();
+  // Query: last 7 days
+  Query<Map<String, dynamic>> _last7DaysQuery(User u) {
+    final now = DateTime.now();
+    final from = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+    return _col(u)
+        .where('ts', isGreaterThanOrEqualTo: Timestamp.fromDate(from))
+        .orderBy('ts', descending: false);
   }
 
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Scaffold(
-        backgroundColor: const Color(0xFFBFD9FB),
-        appBar: AppBar(
-          backgroundColor: const Color(0xFF8BB7D7),
-          title: const Text("Diary"),
-          centerTitle: true,
-        ),
-        body: SafeArea(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                // ===== 新增大标题 =====
-                const Center(
-                  child: Text(
-                    "Mood Diary",
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.black87,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 20),
+  // Build 7-point series (Day 1..Day 7)
+  List<double> _buildSeries(List<QueryDocumentSnapshot<Map<String, dynamic>>> docs) {
+    final now = DateTime.now();
+    final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
+    final sums = List<double>.filled(7, 0);
+    final counts = List<int>.filled(7, 0);
 
-                // ===== 一周心情曲线 + AI 分析 =====
-                _WeeklyMoodChart(col: _col),
-
-                const SizedBox(height: 24),
-
-                // ===== 输入区 =====
-                Form(
-                  key: _formKey,
-                  autovalidateMode: AutovalidateMode.onUserInteraction,
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      _MoodChips(
-                        selected: _selected,
-                        onChanged: (m) => setState(() => _selected = m),
-                      ),
-                      const SizedBox(height: 16),
-                      TextFormField(
-                        controller: _ctrl,
-                        minLines: 5,
-                        maxLines: 10,
-                        decoration: InputDecoration(
-                          labelText: "Write something...",
-                          filled: true,
-                          fillColor: Colors.white,
-                          border: OutlineInputBorder(
-                            borderRadius: BorderRadius.circular(20.0),
-                            borderSide: BorderSide.none,
-                          ),
-                        ),
-                        validator: (v) =>
-                        (v == null || v.trim().isEmpty) ? 'Please write something' : null,
-                      ),
-                      const SizedBox(height: 24),
-                      if (_error != null) ...[
-                        Text(_error!, style: const TextStyle(color: Colors.red)),
-                        const SizedBox(height: 12),
-                      ],
-                      Center(
-                        child: SizedBox(
-                          width: 120,
-                          child: ElevatedButton(
-                            onPressed: _saving ? null : _save,
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFF8BB7D7),
-                              padding: const EdgeInsets.symmetric(vertical: 14),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30.0),
-                              ),
-                            ),
-                            child: _saving
-                                ? const SizedBox(
-                              height: 20, width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2, color: Colors.white,
-                              ),
-                            )
-                                : const Text(
-                              'Save',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w900,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        bottomNavigationBar: const Nav(currentIndex: 1),
-      ),
-    );
-  }
-}
-
-/// 一周心情曲线 + AI 分析
-class _WeeklyMoodChart extends StatelessWidget {
-  final CollectionReference<Map<String, dynamic>> col;
-  const _WeeklyMoodChart({required this.col});
-
-  int _score(Mood m) {
-    switch (m) {
-      case Mood.veryHappy:
-        return 2;
-      case Mood.calm:
-        return 1;
-      case Mood.neutral:
-        return 0;
-      case Mood.sad:
-        return -1;
-      case Mood.verySad:
-        return -2;
+    for (final d in docs) {
+      final ts = (d['ts'] as Timestamp?)?.toDate();
+      final val = (d['mood'] as num?)?.toDouble();
+      if (ts == null || val == null) continue;
+      final dayIdx = ts.difference(start).inDays;
+      if (dayIdx < 0 || dayIdx > 6) continue;
+      sums[dayIdx] += val;
+      counts[dayIdx] += 1;
     }
-  }
-
-  Mood _moodFromName(String name) {
-    return Mood.values.firstWhere(
-          (m) => m.name == name,
-      orElse: () => Mood.neutral,
-    );
+    return List<double>.generate(7, (i) => counts[i] == 0 ? 0 : sums[i] / counts[i]);
   }
 
   @override
   Widget build(BuildContext context) {
-    final since = DateTime.now().subtract(const Duration(days: 7));
-    final q = col.where('ts', isGreaterThanOrEqualTo: since).orderBy('ts');
-
-    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: q.snapshots(),
-      builder: (context, snap) {
-        if (!snap.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final docs = snap.data!.docs;
-        // 最近7天
-        final days = List<DateTime>.generate(7, (i) {
-          final d = DateTime.now().subtract(Duration(days: 6 - i));
-          return DateTime(d.year, d.month, d.day);
-        });
-
-        // 每天心情得分平均值
-        final Map<DateTime, List<int>> byDay = {for (final d in days) d: []};
-        for (final d in docs) {
-          final data = d.data();
-          final ts = (data['ts'] as Timestamp?)?.toDate();
-          final moodName = (data['mood'] as String?) ?? 'neutral';
-          final mood = _moodFromName(moodName);
-          if (ts != null) {
-            final key = DateTime(ts.year, ts.month, ts.day);
-            if (byDay.containsKey(key)) {
-              byDay[key]!.add(_score(mood));
-            }
-          }
-        }
-        final avgScores = days.map((d) {
-          final list = byDay[d]!;
-          if (list.isEmpty) return 0.0;
-          return list.reduce((a, b) => a + b) / list.length;
-        }).toList();
-
-        // AI 分析文字
-        String feedback;
-        final avgAll = avgScores.isEmpty ? 0.0 : avgScores.reduce((a, b) => a + b) / avgScores.length;
-        if (avgAll >= 1) {
-          feedback = "This week looks positive! Keep your good habits going 🌟";
-        } else if (avgAll <= -0.8) {
-          feedback = "It’s been a tough week 😔 Be kind to yourself and take some rest.";
-        } else {
-          feedback = "A mixed week — notice your patterns, reflect and adjust 💡";
-        }
-
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              "This Week's Mood",
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
-            ),
-            const SizedBox(height: 12),
-            SizedBox(
-              height: 180,
-              child: LineChart(
-                LineChartData(
-                  borderData: FlBorderData(show: false),
-                  titlesData: FlTitlesData(
-                    bottomTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) {
-                          final i = value.toInt();
-                          if (i < 0 || i >= days.length) return const SizedBox();
-                          final d = days[i];
-                          const weekdays = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
-                          return Text(weekdays[d.weekday - 1], style: const TextStyle(fontSize: 10));
-                        },
+    return Scaffold(
+      backgroundColor: const Color(0xFFBFD9FB),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFFBFD9FB),
+        centerTitle: true,
+        title: const Text("Mood Diary"),
+        elevation: 0,
+      ),
+      bottomNavigationBar: const Nav(currentIndex: 1),
+      body: SafeArea(
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            16, 16, 16, MediaQuery.of(context).padding.bottom + 90,
+          ),
+          child: Column(
+            children: [
+              // ---- emoji row ----
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: Mood.values.map((m) {
+                  final selected = m == _selected;
+                  return GestureDetector(
+                    onTap: () => setState(() => _selected = m),
+                    child: Container(
+                      margin: const EdgeInsets.symmetric(horizontal: 6),
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: selected ? Colors.purple.shade100 : Colors.white,
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: selected ? Colors.purple : Colors.grey.shade400,
+                          width: selected ? 2 : 1,
+                        ),
                       ),
+                      child: Text(_moodEmoji[m]!, style: const TextStyle(fontSize: 26)),
                     ),
-                    leftTitles: AxisTitles(
-                      sideTitles: SideTitles(
-                        showTitles: true,
-                        interval: 1,
-                        getTitlesWidget: (value, meta) {
-                          return Text(value.toInt().toString(),
-                              style: const TextStyle(fontSize: 10));
-                        },
-                      ),
-                    ),
+                  );
+                }).toList(),
+              ),
+              const SizedBox(height: 16),
+
+              // ---- text ----
+              TextField(
+                controller: _ctrl,
+                maxLines: 4,
+                decoration: InputDecoration(
+                  hintText: "Write something...",
+                  filled: true,
+                  fillColor: Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(16),
+                    borderSide: BorderSide.none,
                   ),
-                  gridData: FlGridData(show: true, horizontalInterval: 1),
-                  lineBarsData: [
-                    LineChartBarData(
-                      isCurved: true,
-                      spots: List.generate(
-                        avgScores.length,
-                            (i) => FlSpot(i.toDouble(), avgScores[i]),
-                      ),
-                      barWidth: 3,
-                      color: Colors.indigo,
-                      dotData: FlDotData(show: true),
-                    ),
-                  ],
                 ),
               ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              feedback,
-              style: const TextStyle(fontSize: 14, color: Colors.black87),
-            ),
-          ],
-        );
-      },
-    );
-  }
-}
+              const SizedBox(height: 16),
 
-/// Mood 选择区
-class _MoodChips extends StatelessWidget {
-  final Mood selected;
-  final ValueChanged<Mood> onChanged;
-  const _MoodChips({required this.selected, required this.onChanged});
+              // ---- chart from Firestore (last 7 days) ----
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text("Mood Statistics",
+                    style: Theme.of(context).textTheme.titleMedium!.copyWith(fontWeight: FontWeight.bold)),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: FutureBuilder<User>(
+                  future: _ensureUser(),
+                  builder: (_, userSnap) {
+                    if (!userSnap.hasData) {
+                      return const Center(child: CircularProgressIndicator());
+                    }
+                    return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                      stream: _last7DaysQuery(userSnap.data!).snapshots(),
+                      builder: (_, snap) {
+                        final series = _buildSeries(snap.data?.docs ?? const []);
+                        return LineChart(
+                          LineChartData(
+                            minY: 0,
+                            maxY: 5,
+                            gridData: FlGridData(show: true, horizontalInterval: 1),
+                            titlesData: FlTitlesData(
+                              leftTitles: AxisTitles(
+                                sideTitles: SideTitles(showTitles: true, reservedSize: 28),
+                              ),
+                              bottomTitles: AxisTitles(
+                                sideTitles: SideTitles(
+                                  showTitles: true,
+                                  getTitlesWidget: (v, meta) {
+                                    final i = v.toInt();
+                                    if (i < 0 || i > 6) return const SizedBox.shrink();
+                                    return Text('Day ${i + 1}', style: const TextStyle(fontSize: 10));
+                                  },
+                                ),
+                              ),
+                            ),
+                            borderData: FlBorderData(show: false),
+                            lineBarsData: [
+                              LineChartBarData(
+                                spots: List.generate(7, (i) => FlSpot(i.toDouble(), series[i])),
+                                isCurved: true,
+                                color: Colors.purple,
+                                barWidth: 3,
+                                dotData: FlDotData(show: true),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
 
-  @override
-  Widget build(BuildContext context) {
-    return Wrap(
-      spacing: 10,
-      children: Mood.values.map((m) {
-        return ChoiceChip(
-          label: Text(_moodEmoji[m]!),
-          selected: m == selected,
-          onSelected: (_) => onChanged(m),
-        );
-      }).toList(),
+              // ---- save button ----
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: _saving ? null : _save,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blueGrey,
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: Text(_saving ? "Saving..." : "Save"),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
