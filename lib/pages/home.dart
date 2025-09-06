@@ -2,6 +2,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../widgets/nav.dart';
+import '../pages/deadline.dart';
+import '../pages/treehole.dart';
+import '../pages/sign_up.dart';
+import '../pages/login.dart';
+import '../pages/welcome.dart';
+import '../pages/ai_companion.dart';
 import 'ai.dart';
 import 'deadline.dart';
 import 'treehole.dart';
@@ -23,6 +29,69 @@ class Home extends StatelessWidget {
         children: [
           const SizedBox(height: 40),
 
+            const SizedBox(height: 80), // spacing below header
+            /*
+            CustomButton(
+              iconPath: "",
+              title: "DEBUG",
+              description: "testing",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Welcome()),
+                );
+              },
+            ),
+            */
+            const SizedBox(height: 20),
+            CustomButton(
+              iconPath: "images/Calender.png",
+              title: "Deadlines",
+              description: "View deadlines",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Deadline()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            CustomButton(
+              iconPath: "images/Tree.png",
+              title: "Treehole",
+              description:
+                  "Write your thought anonymously\nNo names, just your feelings",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const Treehole()),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            CustomButton(
+              iconPath: "images/AI.png",
+              title: "AI Companion Miu",
+              description: "Ease your mind with our furry AI",
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(builder: (context) => const AICompanion()),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+      bottomNavigationBar: const Nav(), // ✅ stays at the bottom
+    );
+  }
+}
+
+class ProfileHeader extends StatelessWidget {
+  final String iconPath;
+  final String line1;
+  final String line2;
           // ==== 顶部问候 ====
           FittedBox(
             fit: BoxFit.scaleDown,
@@ -55,20 +124,6 @@ class Home extends StatelessWidget {
           ),
 
           const SizedBox(height: 32),
-
-          // ==== AI Companion ====
-          _HomeCard(
-            iconPath: 'images/AI.png',
-            title: 'AI Companion',
-            subtitle: 'Chat about study, mood, or anything',
-            onTap: () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(builder: (_) => const Ai()),
-              );
-            },
-          ),
-          const SizedBox(height: 16),
 
           // ==== Deadlines ====
           _HomeCard(
