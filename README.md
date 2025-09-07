@@ -13,7 +13,7 @@ This gap calls for an application that students can rely on every day as both a 
 ---
 
 ## Solution
-Eleanor provides a **holistic digital wellness companion** tailored to university students. Instead of using separate apps for deadlines, journaling, and mindfulness, Eleanor brings them together in one platform.
+PeaceSpace provides a **holistic digital wellness companion** tailored to university students. Instead of using separate apps for deadlines, journaling, and mindfulness, Eleanor brings them together in one platform.
 
 Core values of Eleanor:
 - Accessible: Always available in your pocket.
@@ -21,12 +21,12 @@ Core values of Eleanor:
 - Engaging: Uses simple, interactive, and fun features like the relaxation bear and streak tracking.
 - Safe: Provides anonymous spaces for expression without judgment.
 
-With Eleanor, students can record their moods, manage deadlines, relax with guided activities, and share feelings anonymously. The app is designed to encourage **daily engagement** and help students maintain balance between study, rest, and personal well-being.
+With PeaceSpace, students can record their moods, manage deadlines, relax with guided activities, and share feelings anonymously. The app is designed to encourage **daily engagement** and help students maintain balance between study, rest, and personal well-being.
 
 ---
 
 ## Features
-Eleanor has been designed with students’ real needs in mind. Each module complements the others to provide a complete experience.
+PeaceSpace has been designed with students’ real needs in mind. Each module complements the others to provide a complete experience.
 
 ### Mood Diary
 - Record your mood daily with emoji-based input.
